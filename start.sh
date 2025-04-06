@@ -5,6 +5,23 @@ set -e
 IMAGE_NAME="htb-agent"
 FORCE_BUILD=false
 
+if [[ ! -f .env ]]; then
+    echo "[!] .env file is required but not found."
+    exit 1
+fi
+
+export $(grep -v '^#' .env | xargs)
+
+if [[ -z "$LLM_API_KEY" ]]; then
+    echo "[!] LLM_API_KEY is missing or empty in .env"
+    exit 1
+fi
+
+if [[ -z "$LLM_PROVIDER" ]]; then
+    echo "[!] LLM_PROVIDER is missing. Set to 'grok', 'openai', etc."
+    exit 1
+fi
+
 # === Parse flags ===
 while [[ "$1" =~ ^-- ]]; do
     case "$1" in
@@ -48,7 +65,9 @@ DOCKER_CMD="docker run --rm -it \
   --device /dev/net/tun \
   -v \"$(pwd)\":/mnt \
   -e TARGET_IP=\"$TARGET_IP\" \
-  -e OVPN_FILE=\"/mnt/$REL_OVPN_FILE\""
+  -e OVPN_FILE=\"/mnt/$REL_OVPN_FILE\" \
+  -e LLM_PROVIDER="$LLM_PROVIDER"  \
+  -e GROK_API_KEY=\"$GROK_API_KEY\""
 
 if [[ -n "$MACHINE_NAME" ]]; then
     DOCKER_CMD+=" -e MACHINE_NAME=\"$MACHINE_NAME\""
