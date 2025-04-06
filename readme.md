@@ -1,4 +1,4 @@
-# HTB Autonomous Recon Agent Proposal
+# HTB Autonomous Recon Agent
 
 ## Overview
 
