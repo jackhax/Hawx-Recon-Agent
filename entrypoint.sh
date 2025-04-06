@@ -46,6 +46,15 @@ if nc -vz "$TARGET_IP" 22; then
 fi
 echo ""
 
+# Nmap quick ping scan
+echo "[*] Running Nmap ping scan to validate host is up..."
+if nmap -sn "$TARGET_IP" | grep -q "Host is up"; then
+    echo "[+] Nmap confirms host is up"
+    TCP_OK=true
+else
+    echo "[!] Nmap could not confirm host is up"
+fi
+
 
 # Confirm TCP connectivity
 if [[ "$TCP_OK" == true ]]; then
@@ -64,7 +73,7 @@ if [[ -n "$MACHINE_NAME" ]]; then
     echo ""
 fi
 
-\
+
 # Launch LLM agent (agent.py)
 clear
 echo "[*] 🚀 Launching LLM agent (agent.py)..."

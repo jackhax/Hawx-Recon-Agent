@@ -5,16 +5,22 @@ import sys
 
 
 def main():
+    if len(sys.argv) < 2:
+        print("Usage: main.py <machine_ip>")
+        exit(1)
 
-    args = sys.argv
-    if len(args) < 2:
-        print('Usage: main.py <machine_ip>')
-        exit(0)
+    config = load_env_vars()
+    machine_ip = sys.argv[1]
 
-    api_key, provider = load_env_vars()
-    machine_ip = args[1]
+    llm_client = LLMClient(
+        api_key=config.get("api_key"),
+        provider=config["provider"],
+        ollama_model=config.get("model"),
+        ollama_host=config.get("host"),
+        model=config.get("model"),
+        base_url=config.get("base_url")
+    )
 
-    llm_client = LLMClient(api_key, provider)
     workflow(llm_client, machine_ip)
 
 

@@ -239,7 +239,7 @@ Your task is to provide a high-level executive summary in Markdown format. The s
 - A clear summary of key findings.
 - Critical services and versions discovered.
 - Any known exploits or CVEs found (based on the `searchsploit` results).
-- Suggested next steps from an attacker's perspective.
+- Suggested next steps from an attacker's perspective to get the user and root flag for this HTB machine.
 
 ### Tool Summaries:
 {summary_content}
@@ -268,7 +268,7 @@ def workflow(llm_client, machine_ip):
 
     os.makedirs(base_dir, exist_ok=True)
 
-    nmap_command = ["nmap", "-sC", "-sV", "-p-", machine_ip]
+    nmap_command = ["nmap", "-sC", "-sV", "-p80,22", machine_ip]
     response = execute(nmap_command, llm_client, base_dir,
                        executed, all_recommended_commands)
 
