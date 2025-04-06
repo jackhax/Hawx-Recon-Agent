@@ -2,11 +2,29 @@
 
 set -e
 
-rm -rf reports/ 
-rm -rf summaries/
-
 IMAGE_NAME="htb-agent"
 FORCE_BUILD=false
+
+function show_help() {
+    echo ""
+    echo "Usage: $0 [--force-build] <target_ip> <path_to_ovpn_file> [machine_name]"
+    echo ""
+    echo "Options:"
+    echo "  --force-build   Rebuild the Docker image before execution."
+    echo "  --help          Show this help message and exit."
+    echo ""
+    echo "Example:"
+    echo "  $0 --force-build 10.10.11.58 tmp/htb.ovpn dog"
+    exit 0
+}
+
+# === Handle --help early ===
+if [[ "$1" == "--help" ]]; then
+    show_help
+fi
+
+# Clean triage directory
+rm -rf triage/
 
 # === Load environment variables from .env file ===
 if [[ ! -f .env ]]; then
@@ -32,6 +50,7 @@ fi
 while [[ "$1" =~ ^-- ]]; do
     case "$1" in
         --force-build) FORCE_BUILD=true ;;
+        --help) show_help ;;  # redundant since we check above, but good practice
         *) echo "[!] Unknown flag: $1" && exit 1 ;;
     esac
     shift
@@ -44,8 +63,7 @@ MACHINE_NAME="$3"
 
 # === Validate inputs ===
 if [[ -z "$TARGET_IP" || -z "$OVPN_FILE" ]]; then
-    echo "Usage: $0 [--force-build] <target_ip> <path_to_ovpn_file> [machine_name]"
-    exit 1
+    show_help
 fi
 
 if [[ ! -f "$OVPN_FILE" ]]; then
