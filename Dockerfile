@@ -34,14 +34,15 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
 COPY requirements.txt /tmp/
 RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-
 # Set working directory
 WORKDIR /opt/agent
 
 # Copy agent and entrypoint
-COPY agent.py ./
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY agent/ /opt/agent/
+COPY entrypoint.sh /opt/entrypoint.sh
+
+# Ensure entrypoint is executable
+RUN chmod +x /opt/entrypoint.sh
 
 # Start from the entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/opt/entrypoint.sh"]

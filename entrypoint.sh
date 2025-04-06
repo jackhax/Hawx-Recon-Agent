@@ -2,19 +2,21 @@
 
 set -e
 
-echo ""
+# Display starting message
 echo "=== 🛰️  HTB Agent Container Started ==="
 echo ""
 
+# Checking mounted files
 echo "[*] Checking mounted files in /mnt..."
 ls -l /mnt
 echo ""
 
+# Start OpenVPN with config
 echo "[*] Starting OpenVPN using config: $OVPN_FILE"
 openvpn --config "$OVPN_FILE" --daemon
 echo "[*] OpenVPN daemon started."
-echo ""
 
+# Wait for VPN connection (interface tun0)
 echo "[*] Waiting for VPN connection (interface tun0)..."
 RETRIES=15
 while ! ip a | grep -q "tun0"; do
@@ -26,51 +28,26 @@ while ! ip a | grep -q "tun0"; do
     fi
 done
 echo "[+] ✅ VPN interface tun0 is now up."
-echo ""
 
-echo "=== 🌐 VPN Interface Details ==="
-ip -4 addr show dev tun0 | grep inet || echo "[!] No IP assigned to tun0"
-echo ""
-echo "=== 🧭 Routing Table ==="
-ip route
-echo ""
-
-echo "[*] Testing external connectivity (DNS)..."
-if nslookup google.com > /dev/null 2>&1; then
-    echo "[+] ✅ DNS resolution is working."
-else
-    echo "[!] ❌ DNS resolution failed."
-fi
-echo ""
-
+# Probe target IP
+#TODO: Need more concrete probing
 echo "[*] Probing target: $TARGET_IP"
 TCP_OK=false
 
-echo "[*] 🔌 Checking TCP port 80..."
+# Test TCP port 80
 if nc -vz "$TARGET_IP" 80; then
     echo "[+] Port 80 is open"
     TCP_OK=true
-else
-    echo "[!] Port 80 is closed"
 fi
 
-echo "[*] 🔌 Checking TCP port 22..."
+# Test TCP port 22
 if nc -vz "$TARGET_IP" 22; then
-    echo "[+] Port 22 is open"
     TCP_OK=true
-else
-    echo "[!] Port 22 is closed"
 fi
 echo ""
 
-echo "[*] Performing traceroute to $TARGET_IP..."
-traceroute "$TARGET_IP" || echo "[!] Traceroute failed"
-echo ""
 
-echo "[*] Network interfaces:"
-ip a
-echo ""
-
+# Confirm TCP connectivity
 if [[ "$TCP_OK" == true ]]; then
     echo "[+] ✅ VPN and target connectivity confirmed via TCP."
 else
@@ -79,6 +56,7 @@ else
 fi
 echo ""
 
+# Add machine name to /etc/hosts if provided
 if [[ -n "$MACHINE_NAME" ]]; then
     echo "[*] Mapping $MACHINE_NAME.htb to $TARGET_IP in /etc/hosts"
     echo "$TARGET_IP $MACHINE_NAME.htb" >> /etc/hosts
@@ -86,5 +64,9 @@ if [[ -n "$MACHINE_NAME" ]]; then
     echo ""
 fi
 
+\
+# Launch LLM agent (agent.py)
+clear
 echo "[*] 🚀 Launching LLM agent (agent.py)..."
-python3 /opt/agent/agent.py
+python3 /opt/agent/main.py $TARGET_IP
+
