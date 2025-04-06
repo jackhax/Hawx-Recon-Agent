@@ -159,35 +159,48 @@ def execute(command, llm_client, base_dir, executed, all_recommended):
 
     command = get_corrected_command(command, llm_client)
 
-    print(f"[+] Executing: {' '.join(command)}")
+    print(f"\n\033[1;34m[+] Executing:\033[0m {' '.join(command)}")
+    print("\033[1;34m[>] Running and capturing output...\033[0m")
+
     try:
         with open(output_file, "a", encoding="utf-8") as out:
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
+            max_lines = 9
+            line_count = 0
             for line in process.stdout:
-                print(line, end='')
                 out.write(line)
+                if line_count < max_lines:
+                    print(line, end='')
+                elif line_count == max_lines:
+                    print("\033[1;33m[>] Output truncated...\033[0m")
+                else:
+                    print(
+                        f"\033[1;33m[>] ...{line_count - max_lines + 1} lines hidden\033[0m", end='\r')
+                line_count += 1
             process.wait(timeout=300)
     except subprocess.TimeoutExpired:
         process.terminate()
         with open(output_file, "a", encoding="utf-8") as out:
             out.write("Process terminated due to 5-minute timeout\n")
-        print("Process terminated due to 5-minute timeout")
+        print("\033[1;31m[!] Process terminated due to 5-minute timeout\033[0m")
+        return []
     except Exception as e:
-        print(f"[!] Error running {tool}: {e}")
+        print(f"\033[1;31m[!] Error running {tool}:\033[0m {e}")
         return []
 
-    print(f"[*] Summarizing output of {tool}...")
+    print(f"\n\033[1;34m[>] Parsing results and calling LLM...\033[0m")
     resp = post_step(command, output_file, llm_client,
                      executed, all_recommended)
+    print("\033[1;32m[>] LLM Response:\033[0m")
     print(resp)
 
     try:
         resp = json.loads(sanitize_llm_output(resp))
     except json.JSONDecodeError:
         print(
-            f"[!] Failed to parse LLM response for {tool}, attempting to repair...")
+            f"\033[1;31m[!] Failed to parse LLM response for {tool}, attempting to repair...\033[0m")
         resp = repair_llm_response(resp, llm_client)
         if not resp:
             return []
@@ -268,7 +281,7 @@ def workflow(llm_client, machine_ip):
 
     os.makedirs(base_dir, exist_ok=True)
 
-    nmap_command = ["nmap", "-sC", "-sV", "-p80,22", machine_ip]
+    nmap_command = ["nmap", "-sC", "-sV", "-p-", machine_ip]
     response = execute(nmap_command, llm_client, base_dir,
                        executed, all_recommended_commands)
 
