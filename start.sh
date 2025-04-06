@@ -23,9 +23,6 @@
         show_help
     fi
 
-    # Clean triage directory
-    rm -rf triage/
-
     # === Load environment variables from .env file ===
     if [[ ! -f .env ]]; then
         echo "[!] .env file is required but not found."

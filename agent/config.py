@@ -16,13 +16,13 @@ def load_env_vars():
         return {
             "provider": "groq",
             "api_key": api_key,
-            "model": os.getenv("GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+            "model": os.getenv("MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
         }
 
     elif provider_raw == "ollama":
         return {
             "provider": "ollama",
-            "model": os.getenv("OLLAMA_MODEL", "llama3"),
+            "model": os.getenv("MODEL", "llama3"),
             "host": os.getenv("OLLAMA_HOST", "http://localhost:11434")
         }
 
@@ -33,6 +33,6 @@ def load_env_vars():
         return {
             "provider": "openai",
             "api_key": api_key,
-            "model": os.getenv("OPENAI_MODEL", "gpt-4"),
+            "model": os.getenv("MODEL", "gpt-4"),
             "base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
         }

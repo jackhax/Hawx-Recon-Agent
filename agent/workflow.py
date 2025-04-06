@@ -1,6 +1,9 @@
 import os
 import json
 import subprocess
+import shutil
+
+term_width = shutil.get_terminal_size((80, 20)).columns  # fallback to 80
 
 executed = []
 all_recommended_commands = []
@@ -193,9 +196,6 @@ def execute(command, llm_client, base_dir, executed, all_recommended):
     print(f"\n\033[1;34m[>] Parsing results and calling LLM...\033[0m")
     resp = post_step(command, output_file, llm_client,
                      executed, all_recommended)
-    print("\033[1;32m[>] LLM Response:\033[0m")
-    print(resp)
-
     try:
         resp = json.loads(sanitize_llm_output(resp))
     except json.JSONDecodeError:
@@ -205,9 +205,39 @@ def execute(command, llm_client, base_dir, executed, all_recommended):
         if not resp:
             return []
 
+    print("\033[1;32m[>] LLM Response:\033[0m")
+    print("\n--- Summary ---")
+    print(resp.get("summary", "No summary provided."))
+
+    recommended = resp.get("recommended_steps", [])
+    if recommended:
+        print("\n--- Recommended Next Commands ---")
+        for cmd in recommended:
+            print(f"- {cmd}")
+    else:
+        print("\n[!] No recommended steps.")
+    # print(resp)
+    services = resp.get("services_found", [])
+    if services:
+        print("\n--- Services found ---")
+        for service in services:
+            print(f"- {service}")
+    else:
+        print("\n[!] No new services found.")
+
+    # try:
+    #     resp = json.loads(sanitize_llm_output(resp))
+    # except json.JSONDecodeError:
+    #     print(
+    #         f"\033[1;31m[!] Failed to parse LLM response for {tool}, attempting to repair...\033[0m")
+    #     resp = repair_llm_response(resp, llm_client)
+    #     if not resp:
+    #         return []
+
     with open(summary_file, "a", encoding="utf-8") as f:
         f.write(f"## {tool}\n")
-        f.write(resp['summary'] + "\n\n")
+        f.write('Summary:\n' + resp['summary'] + "\nRecommended steps:\n" +
+                '\n'.join(resp['recommended_steps']) + "\n\n")
 
     all_recommended.extend(resp.get('recommended_steps', []))
     return resp
@@ -281,7 +311,7 @@ def workflow(llm_client, machine_ip):
 
     os.makedirs(base_dir, exist_ok=True)
 
-    nmap_command = ["nmap", "-sC", "-sV", "-p-", machine_ip]
+    nmap_command = ["nmap", "-sC", "-sV", "-p-  ", machine_ip]
     response = execute(nmap_command, llm_client, base_dir,
                        executed, all_recommended_commands)
 
@@ -290,6 +320,7 @@ def workflow(llm_client, machine_ip):
         all_services.extend(response.get("services_found", []))
 
     for cmd in recommended_steps:
+        print("\n" + "=" * term_width + "\n")
         command = cmd.split()
         result = execute(command, llm_client, base_dir,
                          executed, all_recommended_commands)
