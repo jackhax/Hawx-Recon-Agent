@@ -2,6 +2,9 @@
 
 set -e
 
+rm -rf reports/ 
+rm -rf summaries/
+
 IMAGE_NAME="htb-agent"
 FORCE_BUILD=false
 

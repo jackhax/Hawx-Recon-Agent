@@ -1,3 +1,5 @@
 .env
 tmp/
 nmap_reports/
+reports/
+summaries/
