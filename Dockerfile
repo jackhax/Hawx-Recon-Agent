@@ -8,7 +8,7 @@ ENV PATH="/root/go/bin:$PATH"
 # need to add more tools
 # Update the package list and install packages available via apt
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
         openvpn \
         nmap \
         gobuster \
@@ -37,6 +37,7 @@ RUN apt-get update && \
         iproute2 \
         net-tools \
         traceroute \
+        exploitdb \
         python3 \
         python3-pip \
         golang \

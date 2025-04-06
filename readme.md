@@ -103,9 +103,53 @@ triage/10.10.10.5/
 
 ---
 
+## Usage Instructions
+
+### 1. Prepare Environment
+- Ensure you have Docker installed and sufficient disk space (10–20 GB recommended).
+- Create a `.env` file in the same directory with the following:
+
+```env
+LLM_API_KEY=your_llm_api_key
+LLM_PROVIDER=groq
+GROK_MODEL='qwen-2.5-coder-32b'
+```
+
+### 2. Run the Agent
+
+```bash
+./start_agent.sh <target_ip> <path_to_ovpn> [machine_name]
+```
+
+Example:
+
+```bash
+./start_agent.sh 10.10.10.5 ~/htb.ovpn forest
+```
+
+Optional flag:
+- `--force-build`: Forces a rebuild of the Docker image.
+
+### 3. View Results
+
+After completion, results will be saved under:
+
+```
+./triage/<target_ip>/
+```
+
+Look for:
+- `summary.md` – Recon summary
+- `exploits.txt` – Relevant CVEs from searchsploit
+- Individual tool outputs in `.txt` files
+
+---
+
+
 ## Future Add-ons
 
 - Nuclei for fast vuln scans
 - CMS scanners (wpscan, joomscan)
 - Brute-force via Hydra/Medusa
 - Export reports to PDF
+
