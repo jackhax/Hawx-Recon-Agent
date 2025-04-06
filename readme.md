@@ -2,7 +2,7 @@
 
 ## Overview
 
-This proposal outlines a system for an autonomous Hack The Box (HTB) recon agent that uses a Large Language Model (LLM) to perform intelligent initial triage on a target IP. The system is Dockerized, includes automatic OpenVPN setup, and performs both static and LLM-assisted follow-up recon including CVE identification.
+This project outlines a system for an autonomous Hack The Box (HTB) recon agent that uses a Large Language Model (LLM) to perform intelligent initial triage on a target IP. The system is Dockerized, includes automatic OpenVPN setup, and performs both static and LLM-assisted follow-up recon including CVE identification.
 
 ---
 
