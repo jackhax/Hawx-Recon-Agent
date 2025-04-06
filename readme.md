@@ -1,4 +1,3 @@
-# Work in progress!
 # HTB Autonomous Recon Agent Proposal
 
 ## Overview
