@@ -34,18 +34,6 @@ echo "[+] ✅ VPN interface tun0 is now up."
 echo "[*] Probing target: $TARGET_IP"
 TCP_OK=false
 
-# Test TCP port 80
-if nc -vz "$TARGET_IP" 80; then
-    echo "[+] Port 80 is open"
-    TCP_OK=true
-fi
-
-# Test TCP port 22
-if nc -vz "$TARGET_IP" 22; then
-    TCP_OK=true
-fi
-echo ""
-
 # Nmap quick ping scan
 echo "[*] Running Nmap ping scan to validate host is up..."
 if nmap -sn "$TARGET_IP" | grep -q "Host is up"; then
