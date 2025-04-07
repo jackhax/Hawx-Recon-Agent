@@ -2,7 +2,7 @@ import os
 import json
 import subprocess
 import shutil
-
+import re
 term_width = shutil.get_terminal_size((80, 20)).columns  # fallback to 80
 
 executed = []
@@ -11,10 +11,15 @@ all_recommended_commands = []
 available_tools = [
     "openvpn", "nmap", "gobuster", "ffuf", "httpie", "whatweb", "wpscan", "dnsutils",
     "dig", "dnsrecon", "smtp-user-enum", "swaks", "lftp", "ftp", "hydra", "onesixtyone",
-    "snmp", "snmpcheck", "smbclient", "smbmap", "enum4linux", "nikto", "rpcbind", "nbtscan",
-    "chromium", "seclists", "curl", "wget", "git", "unzip", "iproute2", "net-tools",
+    "snmp", "snmpcheck", "smbclient", "smbmap", "enum4linux", "rpcbind", "nbtscan",
+    "seclists", "curl", "wget", "git", "unzip", "iproute2", "net-tools", "nikto"
     "traceroute", "python3", "python3-pip", "golang", "netcat-traditional"
 ]
+
+
+def estimate_tokens(text):
+    # Approximate: 1 token per 3-4 characters or by splitting on whitespace
+    return len(re.findall(r'\w+|\S', text))
 
 
 def repair_llm_response(bad_output, llm_client):
@@ -159,21 +164,38 @@ def execute(command, llm_client, base_dir, executed, all_recommended):
 
     output_file = os.path.join(base_dir, f"{tool}.txt")
     summary_file = os.path.join(base_dir, "summary.md")
+    max_lines = 9
+    max_tokens = llm_client.context_length - \
+        200  # small buffer for prompt metadata
 
     command = get_corrected_command(command, llm_client)
 
     print(f"\n\033[1;34m[+] Executing:\033[0m {' '.join(command)}")
     print("\033[1;34m[>] Running and capturing output...\033[0m")
 
+    token_count = 0
+    line_count = 0
+
     try:
-        with open(output_file, "a", encoding="utf-8") as out:
+        with open(output_file, "w", encoding="utf-8") as out:
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
-            max_lines = 9
-            line_count = 0
             for line in process.stdout:
+                line_tokens = estimate_tokens(line)
+
+                # Stop if token count close to max context
+                if token_count + line_tokens >= max_tokens:
+                    out.write(
+                        "\n[Output truncated due to context window limit]\n")
+                    if line_count <= max_lines:
+                        print(
+                            "\033[1;33m[>] Output truncated due to context window limit.\033[0m")
+                    break
+
                 out.write(line)
+                token_count += line_tokens
+
                 if line_count < max_lines:
                     print(line, end='')
                 elif line_count == max_lines:
@@ -181,8 +203,11 @@ def execute(command, llm_client, base_dir, executed, all_recommended):
                 else:
                     print(
                         f"\033[1;33m[>] ...{line_count - max_lines + 1} lines hidden\033[0m", end='\r')
+
                 line_count += 1
+
             process.wait(timeout=300)
+
     except subprocess.TimeoutExpired:
         process.terminate()
         with open(output_file, "a", encoding="utf-8") as out:

@@ -1,14 +1,20 @@
 import requests
+import os
 
 
 class LLMClient:
-    def __init__(self, api_key=None, provider="grok", ollama_model=None, ollama_host=None, model=None, base_url=None):
+    def __init__(self, api_key=None, provider=None, ollama_model=None, ollama_host=None, model=None, base_url=None):
         self.api_key = api_key
         self.provider = provider
         self.ollama_model = ollama_model
         self.ollama_host = ollama_host
         self.model = model
         self.base_url = base_url
+        try:
+            self.context_length = int(
+                os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
+        except ValueError:
+            self.context_length = 8192
 
     def get_response(self, prompt):
         if self.provider == "groq":
