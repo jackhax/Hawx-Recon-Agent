@@ -21,7 +21,7 @@
 
 ```text
 [Host]
-└── start_agent.sh
+└── hawx.sh
     ├── Parses flags (IP, --ovpn, --steps, etc.)
     ├── Launches Docker container
     │   ├── Mounts current directory to /mnt
@@ -112,14 +112,14 @@ MODEL=qwen-2.5-coder-32b
 ### 2. Run the Agent
 
 ```bash
-./start_agent.sh [--steps N] [--ovpn file.ovpn] [--hostname NAME] <target_ip/domain>
+./hawx.sh [--steps N] [--ovpn file.ovpn] [--hostname NAME] <target_ip/domain>
 ```
 
 Examples:
 
 ```bash
-./start_agent.sh 192.168.1.10
-./start_agent.sh --steps 2 --ovpn vpn.ovpn --hostname target 192.168.1.10
+./hawx.sh 192.168.1.10
+./hawx.sh --steps 2 --ovpn vpn.ovpn --hostname target 192.168.1.10
 ```
 
 ---
