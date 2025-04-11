@@ -1,154 +1,150 @@
-# HTB Autonomous Recon Agent
+# Hawx Recon Agent
 
 ## Overview
 
-This project outlines a system for an autonomous Hack The Box (HTB) recon agent that uses a Large Language Model (LLM) to perform intelligent initial triage on a target IP. The system is Dockerized, includes automatic OpenVPN setup, and performs both static and LLM-assisted follow-up recon including CVE identification.
+**Hawx Recon Agent** is an intelligent, autonomous reconnaissance system powered by a Large Language Model (LLM). Designed for offensive security workflows, it automates initial triage and guided follow-up based on live service data. The agent runs in a Dockerized environment and can optionally tunnel through OpenVPN. Output is structured, actionable, and neatly organized per target.
+
+---
+
+## Features
+
+- 📡 Autonomous recon workflow
+- 🤖 LLM-guided command planning and triage
+- 🔍 CVE and exploit discovery using SearchSploit
+- 🌐 Optional OpenVPN integration
+- 🧠 Markdown summaries of recon
+- 📂 Clean directory structure per target
 
 ---
 
 ## Architecture
 
-### High-Level Flow
-
 ```text
 [Host]
 └── start_agent.sh
-    ├── Builds Docker image (if needed)
+    ├── Parses flags (IP, --ovpn, --steps, etc.)
     ├── Launches Docker container
     │   ├── Mounts current directory to /mnt
-    │   ├── Passes OVPN file and IP
-    │   └── Runs entrypoint (Python-based agent)
+    │   └── Passes env vars
     ↓
 
 [Inside Docker Container]
-└── agent.py (LLM-enabled)
-    ├── Starts OpenVPN
-    ├── Verifies connection (tun0 + IP)
-    ├── Runs nmap on target IP
-    ├── Parses output
-    ├── Takes follow-up actions (web tools, host updates, etc.)
-    └── Calls LLM for triage summary
-        └── Saves results in /mnt/triage/10.10.10.X/
+└── entrypoint.sh
+    ├── Starts OpenVPN if provided
+    ├── Verifies target connectivity
+    ├── Maps hostname if specified
+    └── Launches agent.py
+
+[agent.py]
+├── Runs nmap on target
+├── Parses and summarizes output
+├── Picks follow-up tools
+├── Stores all logs and recon data
+└── Summarizes recon using LLM
 ```
 
 ---
 
-## Agent Responsibilities
+## Agent Workflow
 
-### 1. Initial Enumeration
-- Run: `nmap -sC -sV -oX`
-- Store XML output
-- Extract open ports and services
+### 🔎 Initial Enumeration
+- Nmap (`-sC -sV -p-`)
+- Stores raw and structured output
 
-### 2. Parse and Plan
-- Use LLM or rules to plan next tools:
+### 🧠 Analysis + Planning
+- LLM decides follow-up tools:
   - Web → `httpx`, `gobuster`, `nikto`
-  - FTP → `ftp-anon`, login attempts
-  - SMB → `enum4linux-ng`, `smbclient`
-  - SSH → banner grab, check weak creds
-  - SQL → login test
+  - FTP/SSH/SMB → enumeration tools
+- Deduplicates tools across layers
 
-### 3. Follow-Up Recon
+### 🧰 Follow-Up Tools
+| Service | Toolset |
+|---------|---------|
+| HTTP    | httpx, gobuster, nikto |
+| FTP     | ftp-anon, manual login |
+| SMB     | enum4linux, smbclient |
+| SSH     | Banner grab |
+| SQL     | Basic login logic |
+| Custom  | LLM-based tool picks |
 
-| Port | Follow-Up |
-|------|-----------|
-| 21 (FTP) | `ftp-anon`, login |
-| 22 (SSH) | Banner grab |
-| 80/443 | `httpx`, `gobuster`, `nikto`, screenshots |
-| 139/445 | `enum4linux-ng`, `nmap smb-*` |
-| 3306 | MySQL test |
-| Others | Banner grab |
+### 🛡️ CVE Discovery
+- SearchSploit per service/version
+- LLM-based CVE summaries
+- Output written to `exploits.txt`
 
-### 4. CVE Checking
-- `searchsploit "service version"`
-- `vulners.nse` (Nmap script)
-- Optional Vulners API query
-- LLM mapping versions → CVEs
-
-### 5. LLM Summary Generation
-- Markdown report
-- Include:
-  - Open ports/services
-  - Potential CVEs
-  - Suggested attack paths
-  - Follow-up tool suggestions
+### 📋 Executive Summary
+- Clear Markdown (`summary.md`)
+- Includes:
+  - Ports/services
+  - CVEs
+  - Attack paths
+  - Recommended tools
 
 ---
 
-## Directory Structure (per IP)
+## Directory Structure
 
 ```
-triage/10.10.10.5/
-├── nmap.xml
+triage/192.168.1.10/
+├── nmap_output.txt
 ├── httpx_output.txt
 ├── gobuster.txt
-├── nikto.txt
-├── screenshots/
 ├── exploits.txt
-├── cve_suggestions.json
-└── summary.md
+├── summary.md
+└── summary_exec.md
 ```
 
 ---
 
-## Automation Script (Host)
-
-### `start_agent.sh`
-- Builds Docker image
-- Validates `.ovpn` and IP
-- Mounts CWD to container
-- Passes env vars (IP, OVPN)
-- Starts `agent.py` inside container
-
----
-
-## Usage Instructions
+## Usage
 
 ### 1. Prepare Environment
-- Ensure you have Docker installed and sufficient disk space (10–20 GB recommended).
-- Create a `.env` file in the same directory with the following:
+
+- Docker installed
+- `.env` file in repo root:
 
 ```env
-LLM_API_KEY=your_llm_api_key
+LLM_API_KEY=your_key
 LLM_PROVIDER=groq
-GROK_MODEL='qwen-2.5-coder-32b'
+MODEL=qwen-2.5-coder-32b
 ```
 
 ### 2. Run the Agent
 
 ```bash
-./start_agent.sh <target_ip> <path_to_ovpn> [machine_name]
+./start_agent.sh [--steps N] [--ovpn file.ovpn] [--hostname NAME] <target_ip/domain>
 ```
 
-Example:
+Examples:
 
 ```bash
-./start_agent.sh 10.10.10.5 ~/htb.ovpn forest
+./start_agent.sh 192.168.1.10
+./start_agent.sh --steps 2 --ovpn vpn.ovpn --hostname target 192.168.1.10
 ```
-
-Optional flag:
-- `--force-build`: Forces a rebuild of the Docker image.
-
-### 3. View Results
-
-After completion, results will be saved under:
-
-```
-./triage/<target_ip>/
-```
-
-Look for:
-- `summary.md` – Recon summary
-- `exploits.txt` – Relevant CVEs from searchsploit
-- Individual tool outputs in `.txt` files
 
 ---
 
+## Flags
 
-## Future Add-ons
+| Flag          | Description                                      |
+|---------------|--------------------------------------------------|
+| `--steps`     | Number of recon layers (default: 1, max: 3)      |
+| `--ovpn`      | OpenVPN config file                              |
+| `--hostname`  | Add target to `/etc/hosts` as `hostname.local`   |
+| `--force-build` | Rebuild Docker image before execution         |
+| `--help`      | Show usage help                                  |
 
-- Nuclei for fast vuln scans
-- CMS scanners (wpscan, joomscan)
-- Brute-force via Hydra/Medusa
-- Export reports to PDF
+---
 
+## Roadmap
+
+- 🔬 Add `nuclei`, `wpscan`, and brute-force modules
+- 🧾 PDF export via Pandoc
+- 📊 JSON + HTML output formats
+- 🕵️ Passive recon plugin support
+
+---
+
+## License
+
+MIT License – use freely, responsibly, and at your own risk.

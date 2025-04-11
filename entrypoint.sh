@@ -11,26 +11,27 @@ echo "[*] Checking mounted files in /mnt..."
 ls -l /mnt
 echo ""
 
-# Start OpenVPN with config
-echo "[*] Starting OpenVPN using config: $OVPN_FILE"
-openvpn --config "$OVPN_FILE" --daemon
-echo "[*] OpenVPN daemon started."
+# === Start VPN only if OVPN_FILE is provided ===
+if [[ -n "$OVPN_FILE" ]]; then
+    echo "[*] Starting OpenVPN using config: $OVPN_FILE"
+    openvpn --config "$OVPN_FILE" --daemon
 
-# Wait for VPN connection (interface tun0)
-echo "[*] Waiting for VPN connection (interface tun0)..."
-RETRIES=15
-while ! ip a | grep -q "tun0"; do
-    sleep 1
-    ((RETRIES--))
-    if [[ $RETRIES -eq 0 ]]; then
-        echo "[!] ❌ tun0 did not appear. VPN failed to establish."
-        exit 1
-    fi
-done
-echo "[+] ✅ VPN interface tun0 is now up."
+    echo "[*] Waiting for VPN connection (interface tun0)..."
+    RETRIES=15
+    while ! ip a | grep -q "tun0"; do
+        sleep 1
+        ((RETRIES--))
+        if [[ $RETRIES -eq 0 ]]; then
+            echo "[!] ❌ tun0 did not appear. VPN failed to establish."
+            exit 1
+        fi
+    done
+    echo "[+] ✅ VPN interface tun0 is now up."
+else
+    echo "[*] Skipping VPN setup (no OVPN file provided)."
+fi
 
 # Probe target IP
-#TODO: Need more concrete probing
 echo "[*] Probing target: $TARGET_IP"
 TCP_OK=false
 
@@ -43,7 +44,6 @@ else
     echo "[!] Nmap could not confirm host is up"
 fi
 
-
 # Confirm TCP connectivity
 if [[ "$TCP_OK" == true ]]; then
     echo "[+] ✅ VPN and target connectivity confirmed via TCP."
@@ -54,16 +54,26 @@ fi
 echo ""
 
 # Add machine name to /etc/hosts if provided
-if [[ -n "$MACHINE_NAME" ]]; then
+if [[ -n "$MACHINE_NAME" && "$TARGET_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "[*] Mapping $MACHINE_NAME.htb to $TARGET_IP in /etc/hosts"
     echo "$TARGET_IP $MACHINE_NAME.htb" >> /etc/hosts
     echo "[+] Host mapping added."
     echo ""
+elif [[ -n "$MACHINE_NAME" ]]; then
+    echo "[!] Skipping /etc/hosts mapping: '$TARGET_IP' is not an IPv4 address."
 fi
 
 
-# Launch LLM agent (agent.py)
+if [[ -z "$STEPS" ]]; then
+    STEPS=1
+fi
+
+if [[ "$STEPS" -gt 3 ]]; then
+    echo "[!] STEPS capped at 3. Setting to 3."
+    STEPS=3
+fi
+
+# Launch LLM agent
 clear
 echo "[*] 🚀 Launching LLM agent (agent.py)..."
-python3 /opt/agent/main.py $TARGET_IP
-
+python3 /opt/agent/main.py "$TARGET_IP" "$STEPS"

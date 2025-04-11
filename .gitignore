@@ -4,3 +4,4 @@ nmap_reports/
 reports/
 summaries/
 triage/
+.DS_Store
