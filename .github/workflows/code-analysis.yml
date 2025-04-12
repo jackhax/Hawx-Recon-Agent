@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: '0 2 * * 1'  # weekly
 
+permissions:
+  security-events: write
+
 jobs:
   analyze:
     name: Analyze Code, and Shell Scripts
