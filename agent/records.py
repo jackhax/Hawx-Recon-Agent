@@ -36,7 +36,6 @@ class Records:
             "unzip",
             "iproute2",
             "net-tools",
-            "nikto",
             "traceroute",
             "python3",
             "python3-pip",

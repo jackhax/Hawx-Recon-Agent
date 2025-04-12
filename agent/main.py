@@ -38,7 +38,7 @@ def main():
     )
 
     executor = ReconExecutor(llm_client, machine_ip, threads)
-    executor.workflow(llm_client, machine_ip, steps)
+    executor.workflow(steps)
 
 
 if __name__ == "__main__":

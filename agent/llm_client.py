@@ -21,7 +21,8 @@ class LLMClient:
             raise ValueError("Both provider and model must be specified.")
 
         try:
-            self.context_length = int(os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
+            self.context_length = int(
+                os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
         except ValueError:
             self.context_length = 8192
 
@@ -159,23 +160,22 @@ You are a command validation assistant.
 ### Command to Check:
 {command_str}
 
-### Help Output for `{tool}`:
+### Help Output:
 {help_output}
 
-Your job is to correct the command if needed, including:
-- Fixing syntax errors.
+Your job is to correct the command if needed, with:
+- Proper spacing for each flag and argument.
 
-Return ONLY a valid JSON in this format:
+Return **only** JSON:
 {{
-  "corrected_command": "<the fixed command>"
+  "corrected_command": "<correctly spaced command>"
 }}
-
-Do NOT include any explanation or markdown. No triple backticks.
 """
 
         try:
             response = self.get_response(prompt=prompt)
-            data = self._sanitize_llm_output(self._sanitize_llm_output(response))
+            data = self._sanitize_llm_output(
+                self._sanitize_llm_output(response))
             data = json.loads(data)
             return data["corrected_command"].strip().split()
         except Exception:
@@ -197,7 +197,7 @@ You are a security assistant analyzing the output of the following command:
 
 Your task is to:
 
-1. Provide a **summary** of the findings. Focus on services, versions, possible vulnerabilities, and anything unusual and include all findings.
+1. Provide a **Detailed summary** of the findings. Focus on services, versions, possible vulnerabilities, and anything unusual and include all findings.
 2. Recommend a list of **next commands to run**, based on the current output and the tools available. These should assist in further reconnaissance, vulnerability discovery, or exploitation.
 
 ### Constraints & Guidelines:
@@ -205,7 +205,7 @@ Your task is to:
 - Recommended steps is a list of strings of command
 - Use only the following tools: {str(self.available_tools)}.
 - **Avoid recommending brute-force attacks.**
-- The summary must be **clear, simple**, and written as **bullet points**.
+- The summary must be **clear and simple**.
 - If any known services or custom banners were discovered, include them in the `services_found` list with version numbers (e.g., "apache 2.4.41"). This format should be compatible with tools like searchsploit. If no services are found, return an empty list.
 - **Avoid recommending duplicate tools** (e.g., Gobuster twice).
 - Do **not hallucinate** flags.
@@ -260,7 +260,7 @@ Your task is to:
 
         prompt = f"""
     You are a security analyst. Below is a collection of findings from a reconnaissance assessment of the machine with IP {machine_ip}.
-    Your task is to provide a high-level executive summary in Markdown format. The summary should include:
+    Your task is to provide a detailed executive summary in Markdown format. The summary should include:
 
     - A clear summary of key findings.
     - Critical services and versions discovered.
