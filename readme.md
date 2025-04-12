@@ -131,9 +131,9 @@ Examples:
 | `--steps`     | Number of recon layers (default: 1, max: 3)      |
 | `--ovpn`      | OpenVPN config file                              |
 | `--hostname`  | Add target to `/etc/hosts` as `hostname.local`   |
-| `--force-build` | Rebuild Docker image before execution         |
+| `--force-build` | Rebuild Docker image before execution          |
+| `--threads`   | Number of concurrent command executions per layer|
 | `--help`      | Show usage help                                  |
-
 ---
 
 ## Roadmap
