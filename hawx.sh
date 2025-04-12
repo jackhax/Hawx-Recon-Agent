@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-IMAGE_NAME="htb-agent"
+IMAGE_NAME="hawx-agent"
 FORCE_BUILD=false
 STEPS=1
 OVPN_FILE=""
@@ -21,7 +21,7 @@ function show_help() {
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
-    echo "  $0 --steps 2 --ovpn htb.ovpn --hostname dog 10.10.11.58"
+    echo "  $0 --steps 2 --ovpn vpn.ovpn --hostname dog 10.10.11.58"
     exit 0
 }
 

@@ -75,5 +75,4 @@ fi
 
 # Launch LLM agent
 clear
-echo "[*] 🚀 Launching LLM agent (agent.py)..."
 python3 /opt/agent/main.py "$TARGET_IP" "$STEPS"

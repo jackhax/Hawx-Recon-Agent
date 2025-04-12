@@ -4,6 +4,19 @@ from llm_client import LLMClient
 import sys
 
 
+def print_banner():
+    print(r"""
+██╗  ██╗ █████╗ ██╗    ██╗██╗  ██╗
+██║  ██║██╔══██╗██║    ██║╚██╗██╔╝
+███████║███████║██║ █╗ ██║ ╚███╔╝ 
+██╔══██║██╔══██║██║███╗██║ ██╔██╗ 
+██║  ██║██║  ██║╚███╔███╔╝██╔╝ ██╗
+╚═╝  ╚═╝╚═╝  ╚═╝ ╚══╝╚══╝ ╚═╝  ╚═╝
+
+ H A W X | LLM-based Autonomous Recon Agent ⚡
+    """)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: main.py <machine_ip> [steps]")
@@ -26,4 +39,5 @@ def main():
 
 
 if __name__ == "__main__":
+    print_banner()
     main()

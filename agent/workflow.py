@@ -81,9 +81,9 @@ class ReconExecutor:
 
         # Save metadata
         metadata_entry = {
+            "tool": tool,
             "timestamp": timestamp,
             "command": command,
-            "tool": tool,
             "output_file": output_file,
             "execution_time": duration,
             "layer": layer
