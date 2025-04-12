@@ -37,7 +37,7 @@ jobs:
         # Add more languages here if needed: 'python, javascript, cpp', etc.
 
     - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
+      uses: github/codeql-action/autobuild@v3
 
     # If you have a specific build step or dependencies:
     - name: Install Python deps
