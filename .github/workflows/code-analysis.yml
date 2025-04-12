@@ -1,0 +1,45 @@
+name: Code Analysis
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 2 * * 1'  # weekly
+
+jobs:
+  analyze:
+    name: Analyze Code, and Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+
+    # 2) ShellCheck: Lint your .sh scripts
+    - name: Install ShellCheck
+      run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+    - name: Lint Shell Scripts
+      run: |
+        shellcheck *.sh
+
+    # 3) CodeQL: Security and code scanning for your Python (or other) code
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        # If you want Python scanning:
+        languages: 'python'
+        # Add more languages here if needed: 'python, javascript, cpp', etc.
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    # If you have a specific build step or dependencies:
+    - name: Install Python deps
+      run: pip install -r requirements.txt
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
