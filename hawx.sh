@@ -132,7 +132,7 @@ if [[ -n "$OVPN_FILE" ]]; then
         exit 1
     fi
     ABS_OVPN_FILE="$(cd "$(dirname "$OVPN_FILE")" && pwd)/$(basename "$OVPN_FILE")"
-    REL_OVPN_FILE="${ABS_OVPN_FILE#$(pwd)/}"
+    REL_OVPN_FILE="${ABS_OVPN_FILE#"$(pwd)"/}"
     DOCKER_OVPN_ENV="-e OVPN_FILE=\"/mnt/$REL_OVPN_FILE\""
 fi
 
@@ -152,9 +152,11 @@ $DOCKER_NET_OPTS \
 -e THREADS=\"$THREADS\""
 
 
-for VAR in $(grep -v '^#' .env | cut -d= -f1); do
+vars=$(grep -v '^#' .env | cut -d= -f1)
+for VAR in $vars; do
     DOCKER_CMD+=" -e $VAR=\"${!VAR}\""
 done
+
 
 if [[ -n "$DOCKER_OVPN_ENV" ]]; then
     DOCKER_CMD+=" $DOCKER_OVPN_ENV"
