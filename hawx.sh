@@ -8,6 +8,8 @@ STEPS=1
 OVPN_FILE=""
 MACHINE_NAME=""
 TARGET=""
+THREADS=3
+
 
 function show_help() {
     echo ""
@@ -18,6 +20,7 @@ function show_help() {
     echo "  --steps N       Number of layers of commands to execute (default: 1, max: 3)."
     echo "  --ovpn FILE     Optional OpenVPN config file."
     echo "  --hostname NAME Optional hostname to add to /etc/hosts."
+    echo "  --threads T     Number of threads to run commands, defaults to 3."
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
@@ -43,6 +46,18 @@ while [[ $# -gt 0 ]]; do
             STEPS="$2"
             if ! [[ "$STEPS" =~ ^[0-9]+$ ]] || [[ "$STEPS" -lt 1 || "$STEPS" -gt 3 ]]; then
                 echo "[!] --steps must be an integer between 1 and 3"
+                exit 1
+            fi
+            shift 2
+            ;;
+        --threads)
+            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
+                echo "[!] Missing value for --threads"
+                exit 1
+            fi
+            THREADS="$2"
+            if ! [[ "$THREADS" =~ ^[0-9]+$ ]] || [[ "$THREADS" -lt 1 || "$THREADS" -gt 10 ]]; then
+                echo "[!] --threads must be an integer between 1 and 10"
                 exit 1
             fi
             shift 2
@@ -133,7 +148,9 @@ fi
 DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
 -e TARGET_IP=\"$TARGET\" \
--e STEPS=\"$STEPS\""
+-e STEPS=\"$STEPS\" \
+-e THREADS=\"$THREADS\""
+
 
 for VAR in $(grep -v '^#' .env | cut -d= -f1); do
     DOCKER_CMD+=" -e $VAR=\"${!VAR}\""

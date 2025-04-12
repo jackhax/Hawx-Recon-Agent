@@ -7,7 +7,9 @@ from records import Records
 
 
 class LLMClient:
-    def __init__(self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None):
+    def __init__(
+        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None
+    ):
         self.provider = provider
         self.api_key = api_key
         self.model = model
@@ -38,12 +40,14 @@ class LLMClient:
         return output.strip()
 
     def truncate_to_tokens(self, text, max_tokens):
-        tokens = re.findall(r'\w+|\S', text)
+        tokens = re.findall(r"\w+|\S", text)
         truncated_tokens = tokens[:max_tokens]
-        return ''.join([
-            token if re.match(r'\w', token) else f'{token}'
-            for token in truncated_tokens
-        ])
+        return "".join(
+            [
+                token if re.match(r"\w", token) else f"{token}"
+                for token in truncated_tokens
+            ]
+        )
 
     def get_response(self, prompt: str) -> str:
         prompt = self.truncate_to_tokens(prompt, self.context_length)
@@ -127,25 +131,27 @@ Do NOT add or remove any keys. Do NOT wrap the output in triple backticks or mar
 
     def get_corrected_command(self, command, timeout=10):
         tool = command[0]
-        command_str = ' '.join(command)
+        command_str = " ".join(command)
         try:
             help_output = subprocess.run(
-                [tool, '--help'],
+                [tool, "--help"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             ).stdout
 
-            if tool.tolower() == 'gobuster' or tool.tolower() == 'ffuf':
-                help_output += '\n\nSeclists path: /usr/share/seclists'
-                help_output += '\n Ex Big.txt for web discovery: /usr/share/seclists/Discovery/Web-Content/big.txt'
-                help_output += '\n Ex for ftp: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt'
-                help_output += '\n Ex for DNS: /usr/share/seclists/Discovery/DNS/namelist.txt'
-                help_output += '\n Ex for usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt'
-                help_output += '\n Ex for passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt'
+            if tool.tolower() == "gobuster" or tool.tolower() == "ffuf":
+                help_output += "\n\nSeclists path: /usr/share/seclists"
+                help_output += "\n Ex Big.txt for web discovery: /usr/share/seclists/Discovery/Web-Content/big.txt"
+                help_output += "\n Ex for ftp: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
+                help_output += (
+                    "\n Ex for DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+                )
+                help_output += "\n Ex for usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+                help_output += "\n Ex for passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
 
-        except Exception as e:
+        except Exception:
             return command
 
         prompt = f"""
@@ -154,18 +160,16 @@ You are a command validation assistant.
 ### Command to Check:
 {command_str}
 
-### Help Output for `{tool}`:
+### Help Output:
 {help_output}
 
-Your job is to correct the command if needed, including:
-- Fixing syntax errors.
+Your job is to correct the command if needed, with:
+- Proper spacing for each flag and argument.
 
-Return ONLY a valid JSON in this format:
+Return **only** JSON:
 {{
-  "corrected_command": "<the fixed command>"
+  "corrected_command": "<correctly spaced command>"
 }}
-
-Do NOT include any explanation or markdown. No triple backticks.
 """
 
         try:
@@ -174,14 +178,14 @@ Do NOT include any explanation or markdown. No triple backticks.
                 self._sanitize_llm_output(response))
             data = json.loads(data)
             return data["corrected_command"].strip().split()
-        except Exception as e:
+        except Exception:
             return command
 
     def post_step(self, command, command_output_file):
-        command_str = ' '.join(command)
+        command_str = " ".join(command)
 
         try:
-            with open(command_output_file, 'r', encoding='utf-8') as file:
+            with open(command_output_file, "r", encoding="utf-8") as file:
                 command_output = file.read()
         except FileNotFoundError:
             return f"Error: File not found at {command_output_file}"
@@ -193,7 +197,7 @@ You are a security assistant analyzing the output of the following command:
 
 Your task is to:
 
-1. Provide a **summary** of the findings. Focus on services, versions, possible vulnerabilities, and anything unusual and include all findings.
+1. Provide a **Detailed summary** of the findings. Focus on services, versions, possible vulnerabilities, and anything unusual and include all findings.
 2. Recommend a list of **next commands to run**, based on the current output and the tools available. These should assist in further reconnaissance, vulnerability discovery, or exploitation.
 
 ### Constraints & Guidelines:
@@ -201,7 +205,7 @@ Your task is to:
 - Recommended steps is a list of strings of command
 - Use only the following tools: {str(self.available_tools)}.
 - **Avoid recommending brute-force attacks.**
-- The summary must be **clear, simple**, and written as **bullet points**.
+- The summary must be **clear and simple**.
 - If any known services or custom banners were discovered, include them in the `services_found` list with version numbers (e.g., "apache 2.4.41"). This format should be compatible with tools like searchsploit. If no services are found, return an empty list.
 - **Avoid recommending duplicate tools** (e.g., Gobuster twice).
 - Do **not hallucinate** flags.
@@ -234,7 +238,7 @@ Your task is to:
         response = self._sanitize_llm_output(response)
         try:
             return json.loads(response)
-        except:
+        except Exception:
             return self.repair_llm_response(response)
 
     def executive_summary(self, machine_ip):
@@ -256,7 +260,7 @@ Your task is to:
 
         prompt = f"""
     You are a security analyst. Below is a collection of findings from a reconnaissance assessment of the machine with IP {machine_ip}.
-    Your task is to provide a high-level executive summary in Markdown format. The summary should include:
+    Your task is to provide a detailed executive summary in Markdown format. The summary should include:
 
     - A clear summary of key findings.
     - Critical services and versions discovered.
@@ -323,7 +327,7 @@ Return only the final deduplicated current commands list in JSON format.
         response = self._sanitize_llm_output(response)
         try:
             response = json.loads(response)
-        except:
+        except Exception:
             response = self.repair_llm_response(response)
 
         return response
