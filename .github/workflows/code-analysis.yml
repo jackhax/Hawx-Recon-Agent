@@ -27,7 +27,7 @@ jobs:
 
     # 3) CodeQL: Security and code scanning for your Python (or other) code
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         # If you want Python scanning:
         languages: 'python'
