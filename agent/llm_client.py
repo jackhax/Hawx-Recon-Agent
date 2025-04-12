@@ -7,7 +7,9 @@ from records import Records
 
 
 class LLMClient:
-    def __init__(self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None):
+    def __init__(
+        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None
+    ):
         self.provider = provider
         self.api_key = api_key
         self.model = model
@@ -19,8 +21,7 @@ class LLMClient:
             raise ValueError("Both provider and model must be specified.")
 
         try:
-            self.context_length = int(
-                os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
+            self.context_length = int(os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
         except ValueError:
             self.context_length = 8192
 
@@ -38,12 +39,14 @@ class LLMClient:
         return output.strip()
 
     def truncate_to_tokens(self, text, max_tokens):
-        tokens = re.findall(r'\w+|\S', text)
+        tokens = re.findall(r"\w+|\S", text)
         truncated_tokens = tokens[:max_tokens]
-        return ''.join([
-            token if re.match(r'\w', token) else f'{token}'
-            for token in truncated_tokens
-        ])
+        return "".join(
+            [
+                token if re.match(r"\w", token) else f"{token}"
+                for token in truncated_tokens
+            ]
+        )
 
     def get_response(self, prompt: str) -> str:
         prompt = self.truncate_to_tokens(prompt, self.context_length)
@@ -127,25 +130,27 @@ Do NOT add or remove any keys. Do NOT wrap the output in triple backticks or mar
 
     def get_corrected_command(self, command, timeout=10):
         tool = command[0]
-        command_str = ' '.join(command)
+        command_str = " ".join(command)
         try:
             help_output = subprocess.run(
-                [tool, '--help'],
+                [tool, "--help"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             ).stdout
 
-            if tool.tolower() == 'gobuster' or tool.tolower() == 'ffuf':
-                help_output += '\n\nSeclists path: /usr/share/seclists'
-                help_output += '\n Ex Big.txt for web discovery: /usr/share/seclists/Discovery/Web-Content/big.txt'
-                help_output += '\n Ex for ftp: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt'
-                help_output += '\n Ex for DNS: /usr/share/seclists/Discovery/DNS/namelist.txt'
-                help_output += '\n Ex for usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt'
-                help_output += '\n Ex for passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt'
+            if tool.tolower() == "gobuster" or tool.tolower() == "ffuf":
+                help_output += "\n\nSeclists path: /usr/share/seclists"
+                help_output += "\n Ex Big.txt for web discovery: /usr/share/seclists/Discovery/Web-Content/big.txt"
+                help_output += "\n Ex for ftp: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
+                help_output += (
+                    "\n Ex for DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+                )
+                help_output += "\n Ex for usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+                help_output += "\n Ex for passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
 
-        except Exception as e:
+        except Exception:
             return command
 
         prompt = f"""
@@ -170,18 +175,17 @@ Do NOT include any explanation or markdown. No triple backticks.
 
         try:
             response = self.get_response(prompt=prompt)
-            data = self._sanitize_llm_output(
-                self._sanitize_llm_output(response))
+            data = self._sanitize_llm_output(self._sanitize_llm_output(response))
             data = json.loads(data)
             return data["corrected_command"].strip().split()
-        except Exception as e:
+        except Exception:
             return command
 
     def post_step(self, command, command_output_file):
-        command_str = ' '.join(command)
+        command_str = " ".join(command)
 
         try:
-            with open(command_output_file, 'r', encoding='utf-8') as file:
+            with open(command_output_file, "r", encoding="utf-8") as file:
                 command_output = file.read()
         except FileNotFoundError:
             return f"Error: File not found at {command_output_file}"
@@ -234,7 +238,7 @@ Your task is to:
         response = self._sanitize_llm_output(response)
         try:
             return json.loads(response)
-        except:
+        except Exception:
             return self.repair_llm_response(response)
 
     def executive_summary(self, machine_ip):
@@ -323,7 +327,7 @@ Return only the final deduplicated current commands list in JSON format.
         response = self._sanitize_llm_output(response)
         try:
             response = json.loads(response)
-        except:
+        except Exception:
             response = self.repair_llm_response(response)
 
         return response

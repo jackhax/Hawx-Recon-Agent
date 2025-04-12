@@ -5,3 +5,4 @@ reports/
 summaries/
 triage/
 .DS_Store
+venv/

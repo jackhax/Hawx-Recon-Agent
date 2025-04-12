@@ -4,11 +4,7 @@ import subprocess
 import shutil
 import uuid
 import records as r
-import os
 import time
-import json
-import subprocess
-import uuid
 from datetime import datetime
 import concurrent.futures
 
@@ -16,12 +12,12 @@ term_width = shutil.get_terminal_size((80, 20)).columns  # fallback to 80
 
 
 class ReconExecutor:
-    def __init__(self, llm_client, target):
+    def __init__(self, llm_client, target, threads):
         self.llm_client = llm_client
         self.target = target
         self.base_dir = os.path.join("/mnt/triage", target)
         self.records = r.Records()
-        self.threads = 3
+        self.threads = threads
         os.makedirs(self.base_dir, exist_ok=True)
 
     def execute(self, command, llm_client, base_dir, layer):
@@ -30,8 +26,7 @@ class ReconExecutor:
         os.makedirs(base_dir, exist_ok=True)
 
         timestamp = datetime.utcnow().isoformat()
-        output_file = os.path.join(
-            base_dir, f"{tool}_{str(uuid.uuid4())[:8]}.txt")
+        output_file = os.path.join(base_dir, f"{tool}_{str(uuid.uuid4())[:8]}.txt")
         summary_file = os.path.join(base_dir, "summary.md")
         metadata_file = os.path.join(base_dir, "metadata.json")
         max_lines = 9
@@ -41,7 +36,6 @@ class ReconExecutor:
 
         start_time = time.time()
         line_count = 0
-        status = "success"
 
         try:
             with open(output_file, "w", encoding="utf-8") as out:
@@ -52,33 +46,32 @@ class ReconExecutor:
                     out.write(line)
 
                     if line_count < max_lines:
-                        print(line, end='')
+                        print(line, end="")
                     elif line_count == max_lines:
                         print("\033[1;33m[>] Output truncated...\033[0m")
                     else:
                         print(
-                            f"\033[1;33m[>] ...{line_count - max_lines + 1} lines hidden\033[0m", end='\r')
+                            f"\033[1;33m[>] ...{line_count - max_lines + 1} lines hidden\033[0m",
+                            end="\r",
+                        )
 
                     line_count += 1
 
                 process.wait(timeout=300)
 
         except subprocess.TimeoutExpired:
-            status = "timeout"
             process.terminate()
             with open(output_file, "a", encoding="utf-8") as out:
                 out.write("Process terminated due to 5-minute timeout\n")
-            print(
-                "\033[1;31m[!] Process terminated due to 5-minute timeout\033[0m")
+            print("\033[1;31m[!] Process terminated due to 5-minute timeout\033[0m")
             return []
 
         except Exception as e:
-            status = f"error: {str(e)}"
             print(f"\033[1;31m[!] Error running {tool}:\033[0m {e}")
             return []
 
         duration = round(time.time() - start_time, 2)
-        print(f"\n\033[1;34m[>] Parsing results and calling LLM...\033[0m")
+        print("\n\033[1;34m[>] Parsing results and calling LLM...\033[0m")
         resp = llm_client.post_step(command, output_file)
 
         # Save metadata
@@ -88,7 +81,7 @@ class ReconExecutor:
             "command": command,
             "output_file": output_file,
             "execution_time": duration,
-            "layer": layer
+            "layer": layer,
         }
 
         try:
@@ -128,8 +121,13 @@ class ReconExecutor:
 
         with open(summary_file, "a", encoding="utf-8") as f:
             f.write(f"## {tool}\n")
-            f.write('Summary:\n' + resp['summary'] + "\nRecommended steps:\n" +
-                    '\n'.join(resp['recommended_steps']) + "\n\n")
+            f.write(
+                "Summary:\n"
+                + resp["summary"]
+                + "\nRecommended steps:\n"
+                + "\n".join(resp["recommended_steps"])
+                + "\n\n"
+            )
 
         return resp
 
@@ -140,7 +138,10 @@ class ReconExecutor:
                 print(f"[*] Running searchsploit for: {service}")
                 try:
                     result = subprocess.run(
-                        ["searchsploit", service], capture_output=True, text=True, timeout=60
+                        ["searchsploit", service],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
                     )
                     f.write(f"### {service} ###\n")
                     f.write(result.stdout + "\n")
@@ -149,9 +150,8 @@ class ReconExecutor:
 
     def add_commands(self, commands, records, layer, llm_client):
         records.commands[layer] = commands
-        deduplicated_commands = llm_client.deduplicate_commands(
-            records.commands, layer)
-        records.commands[layer] = deduplicated_commands['deduplicated_commands']
+        deduplicated_commands = llm_client.deduplicate_commands(records.commands, layer)
+        records.commands[layer] = deduplicated_commands["deduplicated_commands"]
 
     def add_services(self, services, records):
         records.services.extend(services)
@@ -189,17 +189,18 @@ class ReconExecutor:
 
                 return (recommendations, services)
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.threads
+            ) as executor:
                 results = list(executor.map(run_command, records.commands[i]))
 
             for recs, svcs in results:
                 current_recommended_commands.extend(recs)
                 self.add_services(svcs, records)
 
-            self.add_commands(current_recommended_commands,
-                              records, i+1, llm_client)
+            self.add_commands(current_recommended_commands, records, i + 1, llm_client)
 
-        print('[*] Executing searchsploit with ', records.services)
+        print("[*] Executing searchsploit with ", records.services)
         if records.services:
             self.run_searchsploit(list(set(records.services)), base_dir)
 
