@@ -10,6 +10,7 @@ import json
 import subprocess
 import uuid
 from datetime import datetime
+import concurrent.futures
 
 term_width = shutil.get_terminal_size((80, 20)).columns  # fallback to 80
 
@@ -20,6 +21,7 @@ class ReconExecutor:
         self.target = target
         self.base_dir = os.path.join("/mnt/triage", target)
         self.records = r.Records()
+        self.threads = 3
         os.makedirs(self.base_dir, exist_ok=True)
 
     def execute(self, command, llm_client, base_dir, layer):
@@ -159,7 +161,7 @@ class ReconExecutor:
         records = self.records
 
         nmap_command = ["nmap", "-sC", "-sV", "-p-", target]
-        response = self.execute(nmap_command, llm_client, base_dir, 4)
+        response = self.execute(nmap_command, llm_client, base_dir, -1)
 
         if isinstance(response, dict):
             recommended_steps = response.get("recommended_steps", [])
@@ -169,18 +171,34 @@ class ReconExecutor:
 
         for i in range(0, steps):
             current_recommended_commands = []
-            for cmd in records.commands[i]:
+
+            print(f"\n[+] Running Step {i} with {self.threads} threads...\n")
+
+            def run_command(cmd):
                 print("\n" + "=" * term_width + "\n")
                 command = cmd.split()
                 command = llm_client.get_corrected_command(command)
                 result = self.execute(command, llm_client, base_dir, i)
+
+                recommendations = []
+                services = []
+
                 if isinstance(result, dict):
-                    current_recommended_commands.extend(
-                        result.get("recommended_steps", []))
-                    self.add_services(result.get(
-                        "services_found", []), records)
+                    recommendations = result.get("recommended_steps", [])
+                    services = result.get("services_found", [])
+
+                return (recommendations, services)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
+                results = list(executor.map(run_command, records.commands[i]))
+
+            for recs, svcs in results:
+                current_recommended_commands.extend(recs)
+                self.add_services(svcs, records)
+
             self.add_commands(current_recommended_commands,
                               records, i+1, llm_client)
+
         print('[*] Executing searchsploit with ', records.services)
         if records.services:
             self.run_searchsploit(list(set(records.services)), base_dir)
