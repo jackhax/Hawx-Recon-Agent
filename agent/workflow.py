@@ -241,7 +241,7 @@ class ReconExecutor:
                 return  # skip post-processing
 
             IDLE_TIMEOUT = 30   # kill if no new lines for 30s
-            TOTAL_TIMEOUT = 300  # kill if entire command takes 5min
+            TOTAL_TIMEOUT = 600  # kill if entire command takes 10min
 
             line_count = 0
             last_output_time = time.time()
