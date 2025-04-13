@@ -1,13 +1,14 @@
 import json
 import os
 import re
-import subprocess
 import requests
 from records import Records
 
 
 class LLMClient:
-    def __init__(self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None):
+    def __init__(
+        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None
+    ):
         if not provider or not model:
             raise ValueError("Both provider and model must be specified.")
 
@@ -56,24 +57,24 @@ class LLMClient:
 
     # ========== Prompt Builders ==========
 
-    def _build_prompt_command_correction(self, command_str, help_output):
-        return f"""
-    You are a command validation assistant.
+    # def _build_prompt_command_correction(self, command_str, help_output):
+    #     return f"""
+    # You are a command validation assistant.
 
-    ### Command to Check:
-    {command_str}
+    # ### Command to Check:
+    # {command_str}
 
-    ### Help Output:
-    {help_output}
+    # ### Help Output:
+    # {help_output}
 
-    Your job is to correct the command if needed, with:
-    - Proper spacing for each flag and argument.
+    # Your job is to correct the command if needed, with:
+    # - Proper spacing for each flag and argument.
 
-    Return **only** JSON:
-    {{
-    "corrected_command": "<correctly spaced command>"
-    }}
-    """
+    # Return **only** JSON:
+    # {{
+    # "corrected_command": "<ccorected command>"
+    # }}
+    # """
 
     def _build_prompt_post_step(self, command_str, command_output):
         return f"""
@@ -107,8 +108,9 @@ class LLMClient:
     {{
     "summary": "<summary_text>",
     "recommended_steps": [
-        "<command_1>",
-        "<command_2>"
+        "<command_1> --flag --flag --flag -f etc",
+        "<command_2> --flag --flag --flag -f etc",
+        "command_3 --flag --flag --flag -f etc"
     ],
     "services_found": [
         "<service_1>",
@@ -137,6 +139,7 @@ class LLMClient:
     {exploits_content}
 
     Only return the plain text Markdown executive summary.
+    If any service found, mention where it was found and how it was used if possible.
     """
 
     def _build_prompt_json_repair(self, bad_output):
@@ -247,38 +250,39 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", e)
             return None
 
-    def get_corrected_command(self, command, timeout=10):
-        tool = command[0]
-        command_str = " ".join(command)
+    # def get_corrected_command(self, command, timeout=10):
+    #   Causing more problems than it's solving
+    #     tool = command[0]
+    #     command_str = " ".join(command)
 
-        try:
-            help_output = subprocess.run(
-                [tool, "--help"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                timeout=timeout,
-            ).stdout
+    #     try:
+    #         help_output = subprocess.run(
+    #             [tool, "--help"],
+    #             stdout=subprocess.PIPE,
+    #             stderr=subprocess.STDOUT,
+    #             text=True,
+    #             timeout=timeout,
+    #         ).stdout
 
-            if tool.lower() in ("gobuster", "ffuf"):
-                help_output += "\n\nSeclists path: /usr/share/seclists"
-                help_output += "\n Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
-                help_output += "\n FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
-                help_output += "\n DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
-                help_output += "\n Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
-                help_output += "\n Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
-        except Exception:
-            return command
+    #         if tool.lower() in ("gobuster", "ffuf"):
+    #             help_output += "\n\nSeclists path: /usr/share/seclists"
+    #             help_output += "\n Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
+    #             help_output += "\n FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
+    #             help_output += "\n DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+    #             help_output += "\n Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+    #             help_output += "\n Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+    #     except Exception:
+    #         return command
 
-        prompt = self._build_prompt_command_correction(
-            command_str, help_output)
+    #     prompt = self._build_prompt_command_correction(
+    #         command_str, help_output)
 
-        try:
-            response = self.get_response(prompt)
-            corrected = json.loads(self._sanitize_llm_output(response))
-            return corrected["corrected_command"].strip().split()
-        except Exception:
-            return command
+    #     try:
+    #         response = self.get_response(prompt)
+    #         corrected = json.loads(self._sanitize_llm_output(response))
+    #         return corrected["corrected_command"].strip().split()
+    #     except Exception:
+    #         return command
 
     def post_step(self, command, command_output_file):
         command_str = " ".join(command)
@@ -316,13 +320,16 @@ class LLMClient:
                 exploits_content = ef.read()
 
         prompt = self._build_prompt_exec_summary(
-            machine_ip, summary_content, exploits_content)
+            machine_ip, summary_content, exploits_content
+        )
 
         response = self.get_response(prompt)
         print("\n[*] Executive Summary:\n")
         print(response)
 
-        with open(os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8"
+        ) as f:
             f.write(response)
 
         return response

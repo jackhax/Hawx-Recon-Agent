@@ -1,4 +1,4 @@
-from workflow import ReconExecutor
+from workflow.executor import ReconExecutor
 from config import load_env_vars
 from llm_client import LLMClient
 import sys

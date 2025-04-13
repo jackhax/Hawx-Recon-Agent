@@ -6,7 +6,6 @@ class Records:
 
     def get_tools(self):
         return [
-            "openvpn",
             "nmap",
             "gobuster",
             "ffuf",
@@ -21,6 +20,7 @@ class Records:
             "lftp",
             "ftp",
             "hydra",
+            "nikto",
             "onesixtyone",
             "snmp",
             "snmpcheck",
@@ -31,14 +31,9 @@ class Records:
             "nbtscan",
             "seclists",
             "curl",
-            "wget",
-            "git",
             "unzip",
             "iproute2",
             "net-tools",
             "traceroute",
-            "python3",
-            "python3-pip",
-            "golang",
             "netcat-traditional",
         ]
