@@ -371,7 +371,7 @@ class ReconExecutor:
         """
 
         # Baseline layer -1
-        nmap_cmds = [f"nmap -sC -sV -p80,22 {self.target}"]
+        nmap_cmds = [f"nmap -sC -sV -p- {self.target}"]
         recommended_from_nmap = self._run_layer(nmap_cmds, -1)
         self.add_commands(recommended_from_nmap,
                           self.records, 0, self.llm_client)
