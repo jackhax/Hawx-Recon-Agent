@@ -1,2 +1,5 @@
 requests
 openai
+pdfkit
+markdown
+weasyprint
