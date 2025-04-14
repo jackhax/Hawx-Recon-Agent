@@ -112,7 +112,7 @@ MODEL=qwen-2.5-coder-32b
 ### 2. Run the Agent
 
 ```bash
-./hawx.sh [--steps N] [--ovpn file.ovpn] [--hostname NAME] <target_ip/domain>
+./hawx.sh [--steps N] [--ovpn file.ovpn] [--interactive] <target_ip/domain>
 ```
 
 Examples:
@@ -132,7 +132,7 @@ Examples:
 | `--ovpn`      | OpenVPN config file                              |
 | `--hostname`  | Add target to `/etc/hosts` as `hostname.local`   |
 | `--force-build` | Rebuild Docker image before execution          |
-| `--threads`   | Number of concurrent command executions per layer|
+| `--interactive`   | Ask user's confirmation before executing recommended commands|
 | `--help`      | Show usage help                                  |
 ---
 
