@@ -3,3 +3,5 @@ openai
 pdfkit
 markdown
 weasyprint
+PyYAML
+dotenv
