@@ -1,7 +1,9 @@
+import readline  # Add this at the top
+
 from workflow.output import execute_command
 
 
-def run_layer(commands, layer_index, llm_client, base_dir, records, threads=None):
+def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=False):
     current_recommended = []
 
     print(
@@ -9,11 +11,39 @@ def run_layer(commands, layer_index, llm_client, base_dir, records, threads=None
     )
 
     for idx, cmd in enumerate(commands):
-        print(f"\033[1;34m[>] Running [{idx+1}/{len(commands)}]: {cmd}\033[0m")
-        parts = cmd.split()
+        print(f"\033[1;34m[>] Command [{idx+1}/{len(commands)}]: {cmd}\033[0m")
 
-        # if "nmap -sC -sV -p-" not in cmd:
-        #     parts = llm_client.get_corrected_command(parts)
+        # Interactive prompt
+        if interactive:
+            while True:
+                user_input = input(
+                    "\033[1;33m    Run? [Enter = yes | m = modify | s = skip] > \033[0m"
+                ).strip().lower()
+                if user_input == "":
+                    break  # proceed
+                elif user_input == "s":
+                    print("    ⏩ Skipping.\n")
+                    cmd = None
+                    break
+                elif user_input == "m":
+                    def prefill_hook():
+                        readline.insert_text(cmd)
+                        readline.redisplay()
+                    readline.set_pre_input_hook(prefill_hook)
+                    try:
+                        new_cmd = input("    Modify command: ").strip()
+                    finally:
+                        readline.set_pre_input_hook()  # Clear hook
+                    if new_cmd:
+                        cmd = new_cmd
+                        break
+                else:
+                    print("    Invalid input. Try again.")
+
+        if not cmd:
+            continue
+
+        parts = cmd.split()
 
         # Run and post-process (log, summarize, etc.)
         resp = execute_command(parts, llm_client, base_dir, layer_index)
