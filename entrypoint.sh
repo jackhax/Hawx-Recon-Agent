@@ -11,7 +11,7 @@ ls -l /mnt
 echo ""
 
 # === Start VPN only if OVPN_FILE is provided ===
-if [[ -n "$OVPN_FILE" ]]; then
+if [[ -n "${OVPN_FILE:-}" ]]; then
     echo "[*] Starting OpenVPN using config: $OVPN_FILE"
     openvpn --config "$OVPN_FILE" --daemon
 
@@ -51,23 +51,29 @@ fi
 echo ""
 
 # Add machine name to /etc/hosts if provided
-if [[ -n "$MACHINE_NAME" && "$TARGET_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+if [[ -n "${MACHINE_NAME:-}" && "$TARGET_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "[*] Mapping $MACHINE_NAME.htb to $TARGET_IP in /etc/hosts"
     echo "$TARGET_IP $MACHINE_NAME.htb" >> /etc/hosts
     echo "[+] Host mapping added."
     echo ""
-elif [[ -n "$MACHINE_NAME" ]]; then
+elif [[ -n "${MACHINE_NAME:-}" ]]; then
     echo "[!] Skipping /etc/hosts mapping: '$TARGET_IP' is not an IPv4 address."
 fi
 
-# Default STEPS
-if [[ -z "$STEPS" ]]; then
+# Cap STEPS at 3
+if [[ -z "${STEPS:-}" ]]; then
     STEPS=1
 fi
 
 if [[ "$STEPS" -gt 3 ]]; then
     echo "[!] STEPS capped at 3. Setting to 3."
     STEPS=3
+fi
+
+# Check LLM_API_KEY
+if [[ -z "${LLM_API_KEY:-}" ]]; then
+    echo "[!] LLM_API_KEY environment variable is required."
+    exit 1
 fi
 
 # Pass INTERACTIVE as third param to agent

@@ -98,20 +98,24 @@ fi
 # === Clean workspace ===
 rm -rf triage/"$TARGET"
 
-# === Load .env ===
+# === Load only LLM_API_KEY from .env ===
 if [[ ! -f .env ]]; then
     echo "[!] .env file is required but not found."
     exit 1
 fi
 
+LLM_API_KEY=""
 while IFS='=' read -r key value; do
     [[ -z "$key" || "$key" =~ ^# ]] && continue
-    export "$key=$value"
+    if [[ "$key" == "LLM_API_KEY" ]]; then
+        LLM_API_KEY="$value"
+    fi
 done < .env
 
-# === Validate required environment variables ===
-[[ -z "${LLM_API_KEY:-}" ]] && echo "[!] LLM_API_KEY missing in .env" && exit 1
-[[ -z "${LLM_PROVIDER:-}" ]] && echo "[!] LLM_PROVIDER missing in .env" && exit 1
+if [[ -z "$LLM_API_KEY" ]]; then
+    echo "[!] LLM_API_KEY missing in .env"
+    exit 1
+fi
 
 # === Normalize OVPN path if provided ===
 DOCKER_OVPN_ENV=""
@@ -138,15 +142,12 @@ fi
 DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
 -e TARGET_IP=\"$TARGET\" \
--e STEPS=\"$STEPS\""
+-e STEPS=\"$STEPS\" \
+-e LLM_API_KEY=\"$LLM_API_KEY\""
 
 if [[ "$INTERACTIVE" == true ]]; then
     DOCKER_CMD+=" -e INTERACTIVE=true"
 fi
-
-for VAR in $(grep -v '^#' .env | cut -d= -f1); do
-    DOCKER_CMD+=" -e $VAR=\"${!VAR}\""
-done
 
 if [[ -n "$DOCKER_OVPN_ENV" ]]; then
     DOCKER_CMD+=" $DOCKER_OVPN_ENV"

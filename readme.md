@@ -96,27 +96,42 @@ triage/192.168.1.10/
 
 ---
 
-## Usage
+## Setup
 
-### 1. Prepare Environment
-
-- Docker installed
-- `.env` file in repo root:
-
-```env
-LLM_API_KEY=your_key
-LLM_PROVIDER=groq
-MODEL=qwen-2.5-coder-32b
+### 1. Install Docker
+Ensure you have Docker installed and running:
+```bash
+sudo apt install docker.io
 ```
 
-### 2. Run the Agent
+### 2. Create `.env` file with your API key
+Create a `.env` file in the root of the repo:
+```env
+LLM_API_KEY=your_llm_api_key_here
+```
+> Only the API key is read from `.env`. All other config is in `config.yaml`
+
+### 3. Create `config.yaml`
+Create a `config.yaml` in the root directory (or mountable from outside):
+```yaml
+llm:
+  provider: groq           # or openai, ollama
+  model: qwen-2.5-coder-32b
+  context_length: 8192
+
+ollama:
+  host: http://host.docker.internal:11434
+```
+
+---
+
+## Usage
 
 ```bash
 ./hawx.sh [--steps N] [--ovpn file.ovpn] [--interactive] <target_ip/domain>
 ```
 
-Examples:
-
+### Examples:
 ```bash
 ./hawx.sh 192.168.1.10
 ./hawx.sh --steps 2 --ovpn vpn.ovpn --hostname target 192.168.1.10
@@ -126,14 +141,15 @@ Examples:
 
 ## Flags
 
-| Flag          | Description                                      |
-|---------------|--------------------------------------------------|
-| `--steps`     | Number of recon layers (default: 1, max: 3)      |
-| `--ovpn`      | OpenVPN config file                              |
-| `--hostname`  | Add target to `/etc/hosts` as `hostname.local`   |
-| `--force-build` | Rebuild Docker image before execution          |
-| `--interactive`   | Ask user's confirmation before executing recommended commands|
-| `--help`      | Show usage help                                  |
+| Flag            | Description                                                  |
+|-----------------|--------------------------------------------------------------|
+| `--steps`       | Number of recon layers (default: 1, max: 3)                  |
+| `--ovpn`        | OpenVPN config file                                          |
+| `--hostname`    | Add target to `/etc/hosts` as `hostname.htb`                |
+| `--force-build` | Rebuild Docker image before execution                        |
+| `--interactive` | Ask user's confirmation before executing recommended commands|
+| `--help`        | Show usage help                                              |
+
 ---
 
 ## Roadmap

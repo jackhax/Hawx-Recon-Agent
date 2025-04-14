@@ -76,6 +76,7 @@ WORKDIR /opt/agent
 
 # Copy agent and entrypoint
 COPY agent/ /opt/agent/
+COPY config.yaml /opt/agent/config.yaml
 COPY entrypoint.sh /opt/entrypoint.sh
 
 # Ensure entrypoint is executable

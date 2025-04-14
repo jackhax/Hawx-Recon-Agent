@@ -7,7 +7,7 @@ from records import Records
 
 class LLMClient:
     def __init__(
-        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None
+        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None, context_length=8192
     ):
         if not provider or not model:
             raise ValueError("Both provider and model must be specified.")
@@ -18,11 +18,7 @@ class LLMClient:
         self.base_url = base_url
         self.host = ollama_host
 
-        try:
-            self.context_length = int(
-                os.getenv("LLM_CONTEXT_LENGTH", "8192").strip())
-        except ValueError:
-            self.context_length = 8192
+        self.context_length = context_length or 8192
 
         records = Records()
         self.available_tools = records.available_tools
