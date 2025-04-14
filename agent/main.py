@@ -27,7 +27,7 @@ def main():
     config = load_env_vars()
     machine_ip = sys.argv[1]
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    threads = int(sys.argv[3]) if len(sys.argv) > 3 else 3
+    interactive = sys.argv[3].lower() == 'true'
 
     llm_client = LLMClient(
         api_key=config.get("api_key"),
@@ -37,7 +37,7 @@ def main():
         base_url=config.get("base_url"),
     )
 
-    executor = ReconExecutor(llm_client, machine_ip, threads)
+    executor = ReconExecutor(llm_client, machine_ip, interactive)
     executor.workflow(steps)
 
 

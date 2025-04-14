@@ -8,23 +8,22 @@ STEPS=1
 OVPN_FILE=""
 MACHINE_NAME=""
 TARGET=""
-THREADS=3
-
+INTERACTIVE=false
 
 function show_help() {
     echo ""
-    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hostname NAME] <target>"
+    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hostname NAME] [--interactive] <target>"
     echo ""
     echo "Options:"
     echo "  --force-build   Rebuild the Docker image before execution."
     echo "  --steps N       Number of layers of commands to execute (default: 1, max: 3)."
     echo "  --ovpn FILE     Optional OpenVPN config file."
     echo "  --hostname NAME Optional hostname to add to /etc/hosts."
-    echo "  --threads T     Number of threads to run commands, defaults to 3."
+    echo "  --interactive   Run in interactive LLM-assisted mode."
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
-    echo "  $0 --steps 2 --ovpn vpn.ovpn --hostname dog 10.10.11.58"
+    echo "  $0 --steps 2 --ovpn vpn.ovpn --hostname dog --interactive 10.10.11.58"
     exit 0
 }
 
@@ -50,18 +49,6 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
-        --threads)
-            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
-                echo "[!] Missing value for --threads"
-                exit 1
-            fi
-            THREADS="$2"
-            if ! [[ "$THREADS" =~ ^[0-9]+$ ]] || [[ "$THREADS" -lt 1 || "$THREADS" -gt 10 ]]; then
-                echo "[!] --threads must be an integer between 1 and 10"
-                exit 1
-            fi
-            shift 2
-            ;;
         --ovpn)
             if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
                 echo "[!] Missing value for --ovpn"
@@ -77,6 +64,10 @@ while [[ $# -gt 0 ]]; do
             fi
             MACHINE_NAME="$2"
             shift 2
+            ;;
+        --interactive)
+            INTERACTIVE=true
+            shift
             ;;
         -*)
             echo "[!] Unknown flag: $1"
@@ -99,7 +90,6 @@ if [[ -z "$TARGET" ]]; then
     show_help
 fi
 
-# Optional IP/domain pattern check
 if ! [[ "$TARGET" =~ ^([a-zA-Z0-9.-]+|\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)$ ]]; then
     echo "[!] Invalid target format: $TARGET"
     exit 1
@@ -148,9 +138,11 @@ fi
 DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
 -e TARGET_IP=\"$TARGET\" \
--e STEPS=\"$STEPS\" \
--e THREADS=\"$THREADS\""
+-e STEPS=\"$STEPS\""
 
+if [[ "$INTERACTIVE" == true ]]; then
+    DOCKER_CMD+=" -e INTERACTIVE=true"
+fi
 
 for VAR in $(grep -v '^#' .env | cut -d= -f1); do
     DOCKER_CMD+=" -e $VAR=\"${!VAR}\""

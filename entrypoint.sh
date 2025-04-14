@@ -2,7 +2,6 @@
 
 set -e
 
-# Display starting message
 echo "=== 🛰️  HTB Agent Container Started ==="
 echo ""
 
@@ -35,7 +34,6 @@ fi
 echo "[*] Probing target: $TARGET_IP"
 TCP_OK=false
 
-# Nmap quick ping scan
 echo "[*] Running Nmap ping scan to validate host is up..."
 if nmap -sn "$TARGET_IP" | grep -q "Host is up"; then
     echo "[+] Nmap confirms host is up"
@@ -44,7 +42,6 @@ else
     echo "[!] Nmap could not confirm host is up"
 fi
 
-# Confirm TCP connectivity
 if [[ "$TCP_OK" == true ]]; then
     echo "[+] ✅ VPN and target connectivity confirmed via TCP."
 else
@@ -63,7 +60,7 @@ elif [[ -n "$MACHINE_NAME" ]]; then
     echo "[!] Skipping /etc/hosts mapping: '$TARGET_IP' is not an IPv4 address."
 fi
 
-
+# Default STEPS
 if [[ -z "$STEPS" ]]; then
     STEPS=1
 fi
@@ -73,15 +70,8 @@ if [[ "$STEPS" -gt 3 ]]; then
     STEPS=3
 fi
 
-if [[ -z "$THREADS" ]]; then
-    THREADS=3
-fi
+# Pass INTERACTIVE as third param to agent
+INTERACTIVE_FLAG="${INTERACTIVE:-false}"
 
-if [[ "$THREADS" -gt 10 ]]; then
-    echo "[!] THREADS capped at 10. Setting to 10."
-    THREADS=10
-fi
-
-# Launch LLM agent
 clear
-python3 /opt/agent/main.py "$TARGET_IP" "$STEPS" "$THREADS"
+python3 /opt/agent/main.py "$TARGET_IP" "$STEPS" "$INTERACTIVE_FLAG"
