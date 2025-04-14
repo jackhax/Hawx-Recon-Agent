@@ -1,5 +1,5 @@
 import readline  # Add this at the top
-
+import shlex
 from workflow.output import execute_command
 
 
@@ -43,7 +43,7 @@ def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=
         if not cmd:
             continue
 
-        parts = cmd.split()
+        parts = shlex.split(cmd)
 
         # Run and post-process (log, summarize, etc.)
         resp = execute_command(parts, llm_client, base_dir, layer_index)
