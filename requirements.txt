@@ -5,4 +5,3 @@ markdown
 weasyprint
 PyYAML
 dotenv
-ushlex

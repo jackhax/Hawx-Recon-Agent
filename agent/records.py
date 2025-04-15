@@ -1,39 +1,20 @@
+import yaml
+
+
 class Records:
     def __init__(self):
         self.commands = [[], [], [], []]
         self.services = []
+        self.tools_yaml_path = 'tools.yaml'
         self.available_tools = self.get_tools()
 
     def get_tools(self):
-        return [
-            "nmap",
-            "gobuster",
-            "ffuf",
-            "httpie",
-            "whatweb",
-            "wpscan",
-            "dnsutils",
-            "dig",
-            "dnsrecon",
-            "smtp-user-enum",
-            "swaks",
-            "lftp",
-            "ftp",
-            "hydra",
-            "nikto",
-            "onesixtyone",
-            "snmp",
-            "snmpcheck",
-            "smbclient",
-            "smbmap",
-            "enum4linux",
-            "rpcbind",
-            "nbtscan",
-            "seclists",
-            "curl",
-            "unzip",
-            "iproute2",
-            "net-tools",
-            "traceroute",
-            "netcat-traditional",
-        ]
+        with open(self.tools_yaml_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        tools = []
+        for section in ["apt", "pip"]:
+            tools.extend(config.get(section, []))
+
+        tools.extend(config.get("custom", {}).keys())
+        return tools

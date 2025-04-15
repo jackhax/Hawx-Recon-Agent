@@ -133,7 +133,7 @@ fi
 # === Build Docker image if needed ===
 if [[ "$FORCE_BUILD" == true || "$(docker images -q "$IMAGE_NAME" 2>/dev/null)" == "" ]]; then
     echo "[*] Building Docker image '$IMAGE_NAME'..."
-    docker build -t "$IMAGE_NAME" .
+    docker build --platform=linux/amd64 -t "$IMAGE_NAME" .
 else
     echo "[*] Docker image '$IMAGE_NAME' already exists. Skipping build."
 fi

@@ -5,7 +5,7 @@ from workflow.output import execute_command
 
 def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=False):
     current_recommended = []
-
+    print('> Layer commands:', commands)
     print(
         f"\n\033[1;36m[***] Starting Layer {layer_index} with {len(commands)} command(s)\033[0m\n"
     )
@@ -42,8 +42,9 @@ def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=
 
         if not cmd:
             continue
-
+        print('> before split', cmd)
         parts = shlex.split(cmd)
+        print('> after split', parts)
 
         # Run and post-process (log, summarize, etc.)
         resp = execute_command(parts, llm_client, base_dir, layer_index)
