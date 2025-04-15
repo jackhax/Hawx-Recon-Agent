@@ -1,5 +1,3 @@
-
-
 def _build_prompt_post_step(available_tools, command_str, command_output):
     return f"""
     You are a security assistant analyzing the output of the following command:

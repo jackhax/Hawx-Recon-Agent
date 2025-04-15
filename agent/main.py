@@ -1,6 +1,4 @@
 import sys
-import os
-import yaml
 from workflow.executor import ReconExecutor
 from llm_client import LLMClient
 from config import load_config
@@ -29,7 +27,7 @@ def main():
     config = load_config()
     machine_ip = sys.argv[1]
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    interactive = sys.argv[3].lower() == 'true' if len(sys.argv) > 3 else False
+    interactive = sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
 
     llm_client = LLMClient(
         api_key=config["api_key"],
@@ -37,7 +35,7 @@ def main():
         model=config["model"],
         base_url=config.get("base_url"),
         ollama_host=config.get("host"),
-        context_length=config.get("context_length", 8192)
+        context_length=config.get("context_length", 8192),
     )
 
     executor = ReconExecutor(llm_client, machine_ip, interactive)

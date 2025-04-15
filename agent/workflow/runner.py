@@ -6,7 +6,8 @@ from workflow.output import execute_command
 def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=False):
     current_recommended = []
     print(
-        f"\n\033[1;36m[***] Starting Layer {layer_index} with {len(commands)} command(s)\033[0m\n")
+        f"\n\033[1;36m[***] Starting Layer {layer_index} with {len(commands)} command(s)\033[0m\n"
+    )
 
     skip_prompt = False  # Flag for "yes to all"
 
@@ -26,9 +27,11 @@ def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=
                     cmd = None
                     break
                 elif user_input.lower() == "m":
+
                     def prefill_hook():
                         readline.insert_text(cmd)
                         readline.redisplay()
+
                     readline.set_pre_input_hook(prefill_hook)
                     try:
                         new_cmd = input("    Modify command: ").strip()
