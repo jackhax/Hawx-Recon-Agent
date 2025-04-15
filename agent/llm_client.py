@@ -100,9 +100,8 @@ class LLMClient:
     - Do not recommend nmap scans unless they are completely exhaustive of nmap -sC -sV -p- target
     - Every command you recommend should be directly related to a service discovered in nmap's scan. Do not make assumptions
 
-    Additional information:
-    #       For enumeration tools like ffuf and gobuser, do not hallucinate wordlists, ony use one from below
-    #             Seclists path: /usr/share/seclists"
+    If any tools require worldlist, do not hallucinate wordlists and use only from the following:
+        Seclists path: /usr/share/seclists"
     #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
     #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
     #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
@@ -130,12 +129,14 @@ class LLMClient:
     def _build_prompt_exec_summary(self, machine_ip, summary_content, exploits_content):
         return f"""
     You are a security analyst. Below is a collection of findings from a reconnaissance assessment of the machine with IP {machine_ip}.
-    Your task is to provide a detailed executive summary in Markdown format. The summary should include:
+    Your task is to provide a very detailed executive summary in Markdown format. The summary should include:
 
     - A clear summary of key findings.
     - Critical services and versions discovered.
     - Any known exploits or CVEs found (based on the `searchsploit` results).
     - Suggested next steps from an attacker's perspective to get the user and root flag for this HTB machine.
+        - Do not suggest repeated steps
+    - Anything else you see fit to include
 
     ### Tool Summaries:
     {summary_content}
@@ -173,12 +174,13 @@ class LLMClient:
     ---
 
     ### Your Responsibilities:
-    1. **Deduplicate current layer commands** — remove redundant or semantically similar commands from the current list.
-    2. **Avoid overlap with past commands** — exclude commands that were already executed or recommended in earlier layers.
-    3. **Prioritize completeness** — keep the most comprehensive or effective version of a command when duplicates or similar tools exist.
-    4. **Eliminate tool overlap** — for example, remove `whatweb` if `nikto` is already included (since `nikto` covers similar functionality).
-    5. You may remove duplicate nmap scans unless it is completely unique
-
+        1. Treat the current list of commands as a draft. Your job is to trim it down to only the most useful and non-redundant entries.
+        2. Exclude any command that has already appeared in a previous layer, even if modified slightly. Prior usage disqualifies it from this layer unless explicitly requested.
+        3. Identify commands that achieve similar outcomes using different tools or parameters. Keep only one — the most capable, general, or reliable version — and remove the rest.
+        4. If multiple commands target the same protocol, port, or endpoint, discard the ones with narrower scope or redundant intent.
+        5. Commands should not repeat the same type of enumeration in every layer. Prioritize novelty and eliminate repetition of generic scans.
+        6. Scanning commands that differ only in output format, verbosity, or timing options are not considered unique. Filter them out.
+        7. Ensure that every command in the final list contributes something distinct. If a command does not expand overall coverage in a meaningful way, it should be removed.
     ---
 
     ### Output Format (must be valid JSON):
@@ -191,9 +193,10 @@ class LLMClient:
     - Do **not** include any explanatory text.
     - The response **must** be valid JSON and parsable by `json.loads()` with **no extra characters or formatting**.
     - Any failure to comply will result in termination and a penalty of 200000000000.
+    - Avoid malformed commands like curlhttp127.0.0.1
 
     Additional information:
-    #       For enumeration tools like ffuf and gobuser, do not hallucinate wordlists, ony use one from below
+    #       For tools that use wordlists, do not hallucinate wordlists, ony use one from below
     #             Seclists path: /usr/share/seclists"
     #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
     #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
@@ -354,9 +357,7 @@ class LLMClient:
 
         prompt = self._build_prompt_deduplication(current_layer, prior_layers)
         response = self.get_response(prompt)
-        print('> Deduplication response:', response)
         response = self._sanitize_llm_output(response)
-        print('> Deduplication response sanitized:', response)
 
         try:
             return json.loads(response)
