@@ -1,9 +1,8 @@
 apt:
   - openvpn
   - nmap
-  - gobuster
-  - nikto
   - ffuf
+  - nikto
   - whatweb
   - dnsutils
   - dnsrecon
