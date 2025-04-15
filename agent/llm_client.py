@@ -112,9 +112,10 @@ class LLMClient:
     {{
     "summary": "<summary_text>",
     "recommended_steps": [
-        "<command_1> --flag --flag --flag -f etc",
-        "<command_2> --flag --flag --flag -f etc",
-        "command_3 --flag --flag --flag -f etc"
+        "<command_1> --flag --flag --flag -f",
+        "<command_2> --flag --flag --flag -f",
+        "command_3 --flag --flag --flag -f"
+        ...
     ],
     "services_found": [
         "<service_1>",
@@ -185,7 +186,7 @@ class LLMClient:
 
     ### Output Format (must be valid JSON):
     {{
-    "deduplicated_commands": ["<command_1 --some_flag blah blah>", "<command_2 --some_flag blah blah>", "..."]
+    "deduplicated_commands": ["<command_1 --some_flag value>", "<command_2 --some_flag value>", "..."]
     }}
 
     ⚠️ Constraints:
