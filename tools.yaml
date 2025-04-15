@@ -1,0 +1,42 @@
+apt:
+  - openvpn
+  - nmap
+  - gobuster
+  - nikto
+  - ffuf
+  - whatweb
+  - dnsutils
+  - dnsrecon
+  - smtp-user-enum
+  - lftp
+  - ftp
+  - hydra
+  - onesixtyone
+  - snmp
+  - snmpd
+  - snmpcheck
+  - smbclient
+  - enum4linux
+  - rpcbind
+  - nbtscan
+  - seclists
+  - curl
+  - wget
+  - git
+  - unzip
+  - iproute2
+  - net-tools
+  - traceroute
+  - exploitdb
+  - python3
+  - python3-pip
+  - golang
+  - netcat-traditional
+
+pip:
+  - httpie
+
+custom:
+  swaks: curl -o /usr/local/bin/swaks https://jetmore.org/john/code/swaks/files/swaks && chmod +x /usr/local/bin/swaks
+  smbmap: git clone https://github.com/ShawnDEvans/smbmap.git /opt/smbmap && ln -s /opt/smbmap/smbmap.py /usr/local/bin/smbmap
+  httpx: go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest

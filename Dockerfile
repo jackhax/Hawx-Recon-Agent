@@ -4,9 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV GO_VERSION=1.22.0
 ENV PATH="/root/go/bin:$PATH"
 
-# Update and install base tools
-# need to add more tools
-# Update the package list and install packages available via apt
+# Install system dependencies and Python 3.10 with required modules
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         openvpn \
@@ -45,42 +43,25 @@ RUN apt-get update && \
         netcat-traditional && \
     apt-get clean
 
-# Install HTTPie using pip
-RUN pip3 install --break-system-packages --no-cache-dir httpie
 
-# Install WPScan using gem
-# RUN apt-get install -y ruby ruby-dev && \
-#     gem install wpscan
-
-# Install Swaks by downloading the standalone script
-RUN curl -o /usr/local/bin/swaks https://jetmore.org/john/code/swaks/files/swaks && \
-    chmod +x /usr/local/bin/swaks
-
-# Install smbmap from GitHub
-RUN git clone https://github.com/ShawnDEvans/smbmap.git /opt/smbmap && \
-    ln -s /opt/smbmap/smbmap.py /usr/local/bin/smbmap
-
-# Install Chromium using snap
-# RUN apt-get install -y snapd && \
-#     snap install chromium
-
-# Install httpx (projectdiscovery)
-RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-
-# Install Python dependencies
-COPY requirements.txt /tmp/
-RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+# Install Go
+RUN curl -OL https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /root -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm go${GO_VERSION}.linux-amd64.tar.gz
 
 # Set working directory
 WORKDIR /opt/agent
 
-# Copy agent and entrypoint
+# Install Python dependencies and run setup
+COPY requirements.txt setup.py tools.yaml /tmp/
+RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+RUN python3 /tmp/setup.py
+
+# Copy agent code and entrypoint
 COPY agent/ /opt/agent/
+COPY tools.yaml /opt/agent/
 COPY config.yaml /opt/agent/config.yaml
 COPY entrypoint.sh /opt/entrypoint.sh
-
-# Ensure entrypoint is executable
 RUN chmod +x /opt/entrypoint.sh
 
-# Start from the entrypoint
 ENTRYPOINT ["/opt/entrypoint.sh"]
