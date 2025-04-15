@@ -100,6 +100,15 @@ class LLMClient:
     - Do not recommend nmap scans unless they are completely exhaustive of nmap -sC -sV -p- target
     - Every command you recommend should be directly related to a service discovered in nmap's scan. Do not make assumptions
 
+    Additional information:
+    #       For enumeration tools like ffuf and gobuser, do not hallucinate wordlists, ony use one from below
+    #             Seclists path: /usr/share/seclists"
+    #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
+    #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
+    #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+    #                Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+    #                Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+
     ### Example Output Format:
     {{
     "summary": "<summary_text>",
@@ -174,7 +183,7 @@ class LLMClient:
 
     ### Output Format (must be valid JSON):
     {{
-    "deduplicated_commands": ["<command_1>", "<command_2>", "..."]
+    "deduplicated_commands": ["<command_1 --some_flag blah blah>", "<command_2 --some_flag blah blah>", "..."]
     }}
 
     ⚠️ Constraints:
@@ -182,6 +191,15 @@ class LLMClient:
     - Do **not** include any explanatory text.
     - The response **must** be valid JSON and parsable by `json.loads()` with **no extra characters or formatting**.
     - Any failure to comply will result in termination and a penalty of 200000000000.
+
+    Additional information:
+    #       For enumeration tools like ffuf and gobuser, do not hallucinate wordlists, ony use one from below
+    #             Seclists path: /usr/share/seclists"
+    #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
+    #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
+    #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+    #                Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+    #                Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
 
     Return only the final deduplicated current commands list in JSON format.
     """
@@ -336,7 +354,9 @@ class LLMClient:
 
         prompt = self._build_prompt_deduplication(current_layer, prior_layers)
         response = self.get_response(prompt)
+        print('> Deduplication response:', response)
         response = self._sanitize_llm_output(response)
+        print('> Deduplication response sanitized:', response)
 
         try:
             return json.loads(response)
