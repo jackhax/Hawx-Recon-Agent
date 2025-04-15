@@ -5,7 +5,7 @@ class Records:
     def __init__(self):
         self.commands = [[], [], [], []]
         self.services = []
-        self.tools_yaml_path = 'tools.yaml'
+        self.tools_yaml_path = "tools.yaml"
         self.available_tools = self.get_tools()
 
     def get_tools(self):

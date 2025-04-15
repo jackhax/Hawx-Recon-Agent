@@ -20,16 +20,16 @@ def install_apt_tools(packages):
     if not packages:
         return
     run_command(["apt-get", "update"])
-    run_command(["apt-get", "install", "-y",
-                "--no-install-recommends", *packages])
+    run_command(["apt-get", "install", "-y", "--no-install-recommends", *packages])
     run_command(["apt-get", "clean"])
 
 
 def install_pip_tools(packages):
     if not packages:
         return
-    run_command(["pip3", "install", "--break-system-packages",
-                "--no-cache-dir", *packages])
+    run_command(
+        ["pip3", "install", "--break-system-packages", "--no-cache-dir", *packages]
+    )
 
 
 def install_custom_commands(commands_dict):

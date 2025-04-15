@@ -8,7 +8,13 @@ import prompt_builder
 
 class LLMClient:
     def __init__(
-        self, api_key=None, provider=None, model=None, base_url=None, ollama_host=None, context_length=8192
+        self,
+        api_key=None,
+        provider=None,
+        model=None,
+        base_url=None,
+        ollama_host=None,
+        context_length=8192,
     ):
         if not provider or not model:
             raise ValueError("Both provider and model must be specified.")
@@ -155,8 +161,9 @@ class LLMClient:
         except FileNotFoundError:
             return f"Error: File not found at {command_output_file}"
 
-        prompt = prompt_builder._build_prompt_post_step(self.available_tools,
-                                                        command_str, command_output)
+        prompt = prompt_builder._build_prompt_post_step(
+            self.available_tools, command_str, command_output
+        )
 
         response = self.get_response(prompt)
         response = self._sanitize_llm_output(response)
@@ -201,8 +208,7 @@ class LLMClient:
         current_layer = commands[layer]
         prior_layers = commands[:layer]
 
-        prompt = prompt_builder._build_prompt_deduplication(
-            current_layer, prior_layers)
+        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
         response = self.get_response(prompt)
         response = self._sanitize_llm_output(response)
 

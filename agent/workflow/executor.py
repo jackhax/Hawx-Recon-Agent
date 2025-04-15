@@ -16,8 +16,7 @@ class ReconExecutor:
 
     def add_commands(self, commands, layer):
         self.records.commands[layer] = commands
-        deduped = self.llm_client.deduplicate_commands(
-            self.records.commands, layer)
+        deduped = self.llm_client.deduplicate_commands(self.records.commands, layer)
         final = deduped.get("deduplicated_commands", commands)
         self.records.commands[layer] = final
 
@@ -27,7 +26,12 @@ class ReconExecutor:
     def workflow(self, steps=1):
         nmap_cmds = [f"nmap -sC -sV -p- {self.target}"]
         recommended = run_layer(
-            nmap_cmds, -1, self.llm_client, self.base_dir, self.records, self.interactive
+            nmap_cmds,
+            -1,
+            self.llm_client,
+            self.base_dir,
+            self.records,
+            self.interactive,
         )
         self.add_commands(recommended, 0)
 
