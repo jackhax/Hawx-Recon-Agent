@@ -31,6 +31,13 @@ class LLMClient:
         self.available_tools = records.available_tools
 
     # ========== Utility Methods ==========
+    def _chunk_text_by_tokens(self, text, max_tokens):
+        tokens = re.findall(r"\w+|\S", text)
+        chunks = []
+        for i in range(0, len(tokens), max_tokens):
+            chunk = "".join(tokens[i:i + max_tokens])
+            chunks.append(chunk)
+        return chunks
 
     def _sanitize_llm_output(self, output):
         output = output.strip()
@@ -161,18 +168,31 @@ class LLMClient:
         except FileNotFoundError:
             return f"Error: File not found at {command_output_file}"
 
-        prompt = prompt_builder._build_prompt_post_step(
-            self.available_tools, command_str, command_output
-        )
+        tokens = re.findall(r"\w+|\S", command_output)
+        if len(tokens) < self.context_length - 1000:
+            prompt = prompt_builder._build_prompt_post_step(
+                self.available_tools, command_str, command_output
+            )
+            response = self.get_response(prompt)
+        else:
+            chunks = self._chunk_text_by_tokens(
+                command_output, self.context_length - 1000)
+            summary_so_far = ""
+            for chunk in chunks:
+                prompt = prompt_builder._build_prompt_post_step_chunked(
+                    self.available_tools, command_str, chunk, summary_so_far
+                )
+                summary_so_far = self.get_response(prompt)
+            # print('summary_so_far:', summary_so_far)
+            response = summary_so_far
 
-        response = self.get_response(prompt)
-        response = self._sanitize_llm_output(response)
         try:
-            return json.loads(response)
+            return json.loads(self._sanitize_llm_output(response))
         except Exception:
             return self.repair_llm_response(response)
 
     def executive_summary(self, machine_ip):
+        print("\n\033[94m[*] Preparing Executive Summary...\033[0m\n")
         base_dir = os.path.join("/mnt/triage", machine_ip)
         summary_file = os.path.join(base_dir, "summary.md")
         exploits_file = os.path.join(base_dir, "exploits.txt")
@@ -189,17 +209,29 @@ class LLMClient:
             with open(exploits_file, "r", encoding="utf-8") as ef:
                 exploits_content = ef.read()
 
-        prompt = prompt_builder._build_prompt_exec_summary(
-            machine_ip, summary_content, exploits_content
-        )
+        full_input = summary_content + "\n\n" + exploits_content
+        tokens = re.findall(r"\w+|\S", full_input)
 
-        response = self.get_response(prompt)
+        if len(tokens) < self.context_length - 1000:
+            prompt = prompt_builder._build_prompt_exec_summary(
+                machine_ip, summary_content, exploits_content
+            )
+            response = self.get_response(prompt)
+        else:
+            chunks = self._chunk_text_by_tokens(
+                full_input, self.context_length - 1000)
+            summary_so_far = ""
+            for chunk in chunks:
+                prompt = prompt_builder._build_prompt_exec_summary_chunked(
+                    machine_ip, chunk, summary_so_far
+                )
+                summary_so_far = self.get_response(prompt)
+            response = summary_so_far
+
         print("\n[*] Executive Summary:\n")
         print(response)
 
-        with open(
-            os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8"
-        ) as f:
+        with open(os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8") as f:
             f.write(response)
 
         return response
@@ -208,7 +240,8 @@ class LLMClient:
         current_layer = commands[layer]
         prior_layers = commands[:layer]
 
-        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
+        prompt = prompt_builder._build_prompt_deduplication(
+            current_layer, prior_layers)
         response = self.get_response(prompt)
         response = self._sanitize_llm_output(response)
 
