@@ -31,7 +31,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
 
     timestamp = datetime.utcnow().isoformat()
-    output_file = os.path.join(base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
+    output_file = os.path.join(
+        base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
     start_time = time.time()
@@ -49,7 +50,9 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             for line in process.stdout:
                 out.write(line)
                 last_line = line.strip()
-                print(f"\r    {last_line[:term_width - 4]}", end="", flush=True)
+                print(f"\r    {' '*(term_width-4)}", end="", flush=True)
+                print(
+                    f"\r    {last_line[:term_width - 4]}", end="", flush=True)
 
             print()  # newline after command completes
             process.wait(timeout=300)

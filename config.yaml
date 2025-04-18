@@ -1,7 +1,7 @@
 llm:
   provider: groq         # Options: ollama, openai, groq, etc.
   model: meta-llama/llama-4-scout-17b-16e-instruct
-  context_length: 60000    # Some models support higher limits
+  context_length: 2000    # Some models support higher limits
 
 ollama:
   host: http://host.docker.internal:11434

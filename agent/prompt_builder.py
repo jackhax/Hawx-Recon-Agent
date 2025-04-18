@@ -136,3 +136,86 @@ def _build_prompt_deduplication(current_layer, prior_layers):
 
     Return only the final deduplicated current commands list in JSON format.
     """
+
+
+def _build_prompt_post_step_chunked(available_tools, command_str, chunk, prev_summary):
+    return f"""
+You are a security assistant helping analyze the output of the command: {command_str}
+
+This is a continuation of a multi-part output. Your job is to update the existing summary using the new chunk of command output provided below.
+
+### Previous Summary:
+{prev_summary or "[None yet]"}
+
+### New Output Chunk:
+{chunk}
+
+---
+
+    ### Constraints & Guidelines:
+    - The summary is always a string and not a list
+    - Recommended steps is a list of strings of command
+    - Use only the following tools: {str(available_tools)}.
+    - **Avoid recommending brute-force attacks.**
+    - The summary must be **clear and simple**.
+    - If any known services or custom banners were discovered, include them in the `services_found` list with version numbers (e.g., "apache 2.4.41"). This format should be compatible with tools like searchsploit. If no services are found, return an empty list.
+    - **Avoid recommending duplicate tools** (e.g., Gobuster twice).
+    - Do **not hallucinate** flags.
+    - The **response must be raw JSON only**. Do **not** wrap the response in triple backticks (` ``` ` or ` ```json `).
+    - The response **must** be a valid JSON object parsable with `json.loads()`.
+    - Your response must always be json
+    - Failure to return response in valid json will result in you termination and penalty of 200000000000
+    - The recommended commands should be executable
+    - Do not recommend nmap scans unless they are completely exhaustive of nmap -sC -sV -p- target
+    If any tools require worldlist, do not hallucinate wordlists and use only from the following:
+    Seclists path: /usr/share/seclists"
+    #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
+    #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt" 
+    #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
+    #                Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+    #                Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+
+
+You must return a valid JSON object with the following structure:
+    ### Example Output Format:
+    {{
+    "summary": "<summary_text>",
+    "recommended_steps": [
+        "<command_1> --flag --flag --flag -f",
+        "<command_2> --flag --flag --flag -f",
+        "command_3 --flag --flag --flag -f"
+        ...
+    ],
+    "services_found": [
+        "<service_1>",
+        "<service_2>"
+    ]
+    }}
+
+⚠️ Constraints:
+- Only return the raw JSON, no explanations, no markdown.
+- The response must be compatible with `json.loads()`.
+- The output must preserve the structure and key names exactly.
+"""
+
+
+def _build_prompt_exec_summary_chunked(machine_ip, chunk, prev_summary):
+    return f"""
+You are a cybersecurity analyst working on an executive summary for the recon of machine {machine_ip}.
+
+Below is a new chunk of tool output or exploit results. Update and refine the executive summary based on it.
+
+### Current Executive Summary So Far:
+{prev_summary or '[None yet]'}
+
+### New Chunk to Incorporate:
+{chunk}
+
+---
+
+Your updated output must be a complete, detailed but crisp Markdown executive summary.
+Only return the Markdown summary. Do not include any additional commentary or formatting.
+Try to intelligently identify false positives and remove them from the summary. Ex: searchsploit results for apache and ssh are often false positives and should be removed from the summary.
+Return only the plain text Markdown executive summary.
+
+"""
