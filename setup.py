@@ -1,3 +1,10 @@
+"""
+Setup script for Hawx Recon Agent.
+
+Installs required system (apt), Python (pip), and custom tools as defined in tools.yaml.
+Intended to be run as root inside the Docker build or setup process.
+"""
+
 import subprocess
 import yaml
 import os
@@ -20,7 +27,8 @@ def install_apt_tools(packages):
     if not packages:
         return
     run_command(["apt-get", "update"])
-    run_command(["apt-get", "install", "-y", "--no-install-recommends", *packages])
+    run_command(["apt-get", "install", "-y",
+                "--no-install-recommends", *packages])
     run_command(["apt-get", "clean"])
 
 

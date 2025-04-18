@@ -1,20 +1,37 @@
+"""
+Records management for Hawx Recon Agent.
+
+Tracks executed commands, discovered services, and available tools for the recon workflow.
+"""
 import yaml
 
 
 class Records:
+    """
+    Stores and manages recon commands, discovered services, and available tools.
+    Loads tool definitions from tools.yaml.
+    """
+
     def __init__(self):
+        # List of command lists for each workflow layer
         self.commands = [[], [], [], []]
+        # List of discovered services (e.g., 'apache 2.4.41')
         self.services = []
+        # Path to the YAML file containing tool definitions
         self.tools_yaml_path = "tools.yaml"
+        # List of all available tools (apt, pip, custom)
         self.available_tools = self.get_tools()
 
     def get_tools(self):
+        # Load tool definitions from the YAML file
         with open(self.tools_yaml_path, "r") as f:
             config = yaml.safe_load(f)
 
         tools = []
+        # Add system and Python tools
         for section in ["apt", "pip"]:
             tools.extend(config.get(section, []))
 
+        # Add custom tools (keys only)
         tools.extend(config.get("custom", {}).keys())
         return tools

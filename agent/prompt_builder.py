@@ -1,3 +1,11 @@
+"""
+Prompt builder utilities for Hawx Recon Agent.
+
+Provides functions to construct prompts for LLM-based summarization, command recommendation,
+JSON repair, deduplication, and executive summary generation.
+"""
+
+
 def _build_prompt_post_step(available_tools, command_str, command_output):
     return f"""
     You are a security assistant analyzing the output of the following command:
@@ -6,7 +14,7 @@ def _build_prompt_post_step(available_tools, command_str, command_output):
 
     Your task is to:
 
-    1. Provide a **Detailed summary** of the findings. Focus on services, versions, possible vulnerabilities, and anything unusual and include all findings.
+    1. Provide a **Detailed summary** of the findings. Focus on findings like services, end points, versions, possible vulnerabilities, and anything unusual and include all findings.
     2. Recommend a list of **next commands to run**, based on the current output and the tools available. These should assist in further reconnaissance, vulnerability discovery, or exploitation.
 
     ### Constraints & Guidelines:

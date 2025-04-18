@@ -1,3 +1,10 @@
+"""
+Output and reporting utilities for Hawx Recon Agent.
+
+Handles command execution, output logging, summary generation, SearchSploit integration,
+and PDF export of executive summaries.
+"""
+
 import os
 import json
 import uuid
@@ -8,6 +15,7 @@ import shutil
 
 
 def print_banner():
+    # Print the ASCII art banner for branding and user feedback
     print(
         r"""
 ██╗  ██╗ █████╗ ██╗    ██╗██╗  ██╗
@@ -26,6 +34,7 @@ term_width = shutil.get_terminal_size((80, 20)).columns
 
 
 def execute_command(command_parts, llm_client, base_dir, layer):
+    # Execute a single recon command and handle output, logging, and LLM summarization
     tool = command_parts[0]
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
@@ -38,6 +47,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     start_time = time.time()
     try:
         with open(output_file, "w", encoding="utf-8") as out:
+            # Run the command as a subprocess and capture output
             process = subprocess.Popen(
                 command_parts,
                 stdout=subprocess.PIPE,
@@ -50,6 +60,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             for line in process.stdout:
                 out.write(line)
                 last_line = line.strip()
+                # Print the last line of output in-place for user feedback
                 print(f"\r    {' '*(term_width-4)}", end="", flush=True)
                 print(
                     f"\r    {last_line[:term_width - 4]}", end="", flush=True)
@@ -58,15 +69,18 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             process.wait(timeout=300)
 
     except subprocess.TimeoutExpired:
+        # Handle command timeout (5 minutes)
         process.terminate()
         with open(output_file, "a", encoding="utf-8") as out:
             out.write("Process terminated due to 5-minute timeout\n")
         return []
 
     except Exception:
+        # Handle other command execution errors
         return []
 
     duration = round(time.time() - start_time, 2)
+    # Summarize command output and recommend next steps using LLM
     resp = llm_client.post_step(command_parts, output_file)
     if not isinstance(resp, dict):
         return []
@@ -82,6 +96,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     }
 
     try:
+        # Append metadata for this command to the metadata file
         if os.path.exists(metadata_file):
             with open(metadata_file, "r", encoding="utf-8") as mf:
                 existing_meta = json.load(mf)
@@ -100,6 +115,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
     summary_file = os.path.join(base_dir, "summary.md")
     try:
+        # Append a markdown summary for this tool to the summary file
         with open(summary_file, "a", encoding="utf-8") as sf:
             sf.write(f"## {tool}\n\n")
             sf.write("**Summary**\n\n")
@@ -130,6 +146,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     }
 
     try:
+        # Append tool summary data to the JSON summary file
         existing_data = []
         if os.path.exists(json_data_file):
             with open(json_data_file, "r", encoding="utf-8") as jf:
@@ -144,6 +161,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
 
 def run_searchsploit(services, base_dir):
+    # Run SearchSploit for each discovered service and append results to exploits.txt
     output_file = os.path.join(base_dir, "exploits.txt")
     with open(output_file, "a", encoding="utf-8") as f:
         for svc in services:
@@ -161,6 +179,7 @@ def run_searchsploit(services, base_dir):
 
 
 def export_summary_to_pdf(base_dir):
+    # Convert the executive summary markdown file to PDF using WeasyPrint
     md_path = os.path.join(base_dir, "summary_exec.md")
     pdf_path = os.path.join(base_dir, "summary_exec.pdf")
 

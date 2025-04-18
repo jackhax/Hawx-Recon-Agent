@@ -1,3 +1,9 @@
+"""
+LLM client for Hawx Recon Agent.
+
+Handles communication with LLM providers (Groq, OpenAI, Ollama), response post-processing,
+command deduplication, and executive summary generation.
+"""
 import json
 import os
 import re
@@ -7,6 +13,13 @@ import prompt_builder
 
 
 class LLMClient:
+    """
+    Client for interacting with a Large Language Model (LLM) provider.
+
+    Supports Groq, OpenAI, and Ollama APIs. Provides methods for querying the LLM,
+    repairing malformed responses, deduplicating commands, and generating executive summaries.
+    """
+
     def __init__(
         self,
         api_key=None,
@@ -16,6 +29,7 @@ class LLMClient:
         ollama_host=None,
         context_length=8192,
     ):
+        # Validate required LLM provider and model
         if not provider or not model:
             raise ValueError("Both provider and model must be specified.")
 
@@ -24,14 +38,15 @@ class LLMClient:
         self.model = model
         self.base_url = base_url
         self.host = ollama_host
-
         self.context_length = context_length or 8192
 
+        # Load available tools for prompt context
         records = Records()
         self.available_tools = records.available_tools
 
     # ========== Utility Methods ==========
     def _chunk_text_by_tokens(self, text, max_tokens):
+        # Split text into chunks based on token count for LLM context limits
         tokens = re.findall(r"\w+|\S", text)
         chunks = []
         for i in range(0, len(tokens), max_tokens):
@@ -40,6 +55,7 @@ class LLMClient:
         return chunks
 
     def _sanitize_llm_output(self, output):
+        # Remove markdown/code block wrappers from LLM output
         output = output.strip()
         if output.startswith("```json"):
             output = output[7:]
@@ -50,16 +66,19 @@ class LLMClient:
         return output
 
     def truncate_to_tokens(self, text, max_tokens):
+        # Truncate text to a maximum number of tokens for LLM input
         tokens = re.findall(r"\w+|\S", text)
         return "".join(tokens[:max_tokens])
 
     def _build_chat_payload(self, prompt):
+        # Build the payload for chat-based LLM APIs
         return {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
         }
 
     def _build_headers(self):
+        # Build HTTP headers for LLM API requests
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -68,6 +87,7 @@ class LLMClient:
     # ========== LLM Query Methods ==========
 
     def get_response(self, prompt):
+        # Query the configured LLM provider with the given prompt
         prompt = self.truncate_to_tokens(prompt, self.context_length)
         if self.provider == "groq":
             return self._query_groq(prompt)
@@ -79,6 +99,7 @@ class LLMClient:
             raise NotImplementedError(f"Unsupported provider: {self.provider}")
 
     def _query_groq(self, prompt):
+        # Send a prompt to the Groq API
         try:
             resp = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
@@ -91,6 +112,7 @@ class LLMClient:
             raise RuntimeError(f"Groq request failed: {e}")
 
     def _query_openai(self, prompt):
+        # Send a prompt to the OpenAI-compatible API
         try:
             url = f"{self.base_url.rstrip('/')}/chat/completions"
             resp = requests.post(
@@ -104,6 +126,7 @@ class LLMClient:
             raise RuntimeError(f"OpenAI request failed: {e}")
 
     def _query_ollama(self, prompt):
+        # Send a prompt to the Ollama API
         try:
             resp = requests.post(
                 f"{self.host.rstrip('/')}/api/generate",
@@ -117,6 +140,7 @@ class LLMClient:
     # ========== Repair & Correction ==========
 
     def repair_llm_response(self, bad_output):
+        # Attempt to repair malformed LLM output by prompting the LLM to fix its own response
         prompt = prompt_builder._build_prompt_json_repair(bad_output)
         try:
             fixed = self.get_response(prompt)
@@ -160,6 +184,7 @@ class LLMClient:
     #         return command
 
     def post_step(self, command, command_output_file):
+        # Summarize and recommend next steps after running a command
         command_str = " ".join(command)
 
         try:
@@ -169,6 +194,7 @@ class LLMClient:
             return f"Error: File not found at {command_output_file}"
 
         tokens = re.findall(r"\w+|\S", command_output)
+        # Use chunked prompt if output is too large for LLM context
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_post_step(
                 self.available_tools, command_str, command_output
@@ -183,15 +209,16 @@ class LLMClient:
                     self.available_tools, command_str, chunk, summary_so_far
                 )
                 summary_so_far = self.get_response(prompt)
-            # print('summary_so_far:', summary_so_far)
             response = summary_so_far
 
         try:
             return json.loads(self._sanitize_llm_output(response))
         except Exception:
+            # Attempt to repair if JSON parsing fails
             return self.repair_llm_response(response)
 
     def executive_summary(self, machine_ip):
+        # Generate a detailed executive summary for the recon session
         print("\n\033[94m[*] Preparing Executive Summary...\033[0m\n")
         base_dir = os.path.join("/mnt/triage", machine_ip)
         summary_file = os.path.join(base_dir, "summary.md")
@@ -212,6 +239,7 @@ class LLMClient:
         full_input = summary_content + "\n\n" + exploits_content
         tokens = re.findall(r"\w+|\S", full_input)
 
+        # Use chunked prompt if summary is too large
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_exec_summary(
                 machine_ip, summary_content, exploits_content
@@ -231,12 +259,14 @@ class LLMClient:
         print("\n[*] Executive Summary:\n")
         print(response)
 
+        # Save the executive summary to a markdown file
         with open(os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8") as f:
             f.write(response)
 
         return response
 
     def deduplicate_commands(self, commands, layer):
+        # Deduplicate commands for the current layer using LLM
         current_layer = commands[layer]
         prior_layers = commands[:layer]
 
@@ -248,4 +278,5 @@ class LLMClient:
         try:
             return json.loads(response)
         except Exception:
+            # Attempt to repair if JSON parsing fails
             return self.repair_llm_response(response)
