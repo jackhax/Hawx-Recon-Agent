@@ -4,6 +4,7 @@ Workflow executor for Hawx Recon Agent.
 Orchestrates the multi-layer reconnaissance workflow, manages command execution,
 service discovery, and report generation for a given target.
 """
+
 import os
 from workflow.runner import run_layer
 from workflow.output import run_searchsploit
@@ -34,8 +35,7 @@ class ReconExecutor:
     def add_commands(self, commands, layer):
         # Store deduplicated commands for the given workflow layer
         self.records.commands[layer] = commands
-        deduped = self.llm_client.deduplicate_commands(
-            self.records.commands, layer)
+        deduped = self.llm_client.deduplicate_commands(self.records.commands, layer)
         final = deduped.get("deduplicated_commands", commands)
         self.records.commands[layer] = final
 

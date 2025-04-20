@@ -225,5 +225,11 @@ Your updated output must be a complete, detailed but crisp Markdown executive su
 Only return the Markdown summary. Do not include any additional commentary or formatting.
 Try to intelligently identify false positives and remove them from the summary. Ex: searchsploit results for apache and ssh are often false positives and should be removed from the summary.
 Return only the plain text Markdown executive summary.
+    - A clear summary of key findings.
+    - Critical services and versions discovered.
+    - Any known exploits or CVEs found (based on the `searchsploit` results).
+    - Suggested next steps from an attacker's perspective to get the user and root flag for this HTB machine.
+        - Do not suggest repeated steps
+    - Anything else you see fit to include
 
 """

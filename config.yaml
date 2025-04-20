@@ -1,10 +1,9 @@
 llm:
-  provider: groq         # Options: ollama, openai, groq, etc.
-  model: meta-llama/llama-4-scout-17b-16e-instruct
-  context_length: 8192    # Some models support higher limits
-
-ollama:
-  host: http://host.docker.internal:11434
+  provider: openrouter         # Options: ollama, openai, openrouter, groq, etc.
+  model: deepseek/deepseek-chat-v3-0324:free  # Model name for the selected provider
+  context_length: 60000    # Some models support higher limitsm
+# ollama:
+#   host: http://host.docker.internal:11434
 
 # Notes:
 # - To switch models or providers, edit the values above

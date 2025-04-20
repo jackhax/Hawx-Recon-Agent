@@ -3,6 +3,7 @@ Records management for Hawx Recon Agent.
 
 Tracks executed commands, discovered services, and available tools for the recon workflow.
 """
+
 import yaml
 
 
