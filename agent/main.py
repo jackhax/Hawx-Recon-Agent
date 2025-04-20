@@ -38,15 +38,15 @@ def main():
     machine_ip = sys.argv[1]  # Target machine IP address
     # Number of workflow steps/layers
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    interactive = sys.argv[3].lower() == "true" if len(
-        sys.argv) > 3 else False  # Interactive mode flag
+    interactive = (
+        sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
+    )  # Interactive mode flag
 
     # Initialize the LLM client with config values
     llm_client = LLMClient(
         api_key=config["api_key"],
         provider=config["provider"],
         model=config["model"],
-        base_url=config.get("base_url"),
         ollama_host=config.get("host"),
         context_length=config.get("context_length", 8192),
     )

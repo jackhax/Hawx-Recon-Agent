@@ -3,6 +3,7 @@ Configuration loader for Hawx Recon Agent.
 
 Loads sensitive values from .env and structured configuration from config.yaml.
 """
+
 import os
 import yaml
 from dotenv import load_dotenv

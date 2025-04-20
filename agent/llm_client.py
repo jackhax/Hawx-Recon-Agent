@@ -4,6 +4,7 @@ LLM client for Hawx Recon Agent.
 Handles communication with LLM providers (Groq, OpenAI, Ollama), response post-processing,
 command deduplication, and executive summary generation.
 """
+
 import json
 import os
 import re
@@ -16,7 +17,7 @@ class LLMClient:
     """
     Client for interacting with a Large Language Model (LLM) provider.
 
-    Supports Groq, OpenAI, and Ollama APIs. Provides methods for querying the LLM,
+    Supports Groq, OpenAI, OpenRouter and Ollama APIs. Provides methods for querying the LLM,
     repairing malformed responses, deduplicating commands, and generating executive summaries.
     """
 
@@ -36,7 +37,15 @@ class LLMClient:
         self.provider = provider
         self.api_key = api_key
         self.model = model
-        self.base_url = base_url
+        # Always use default base_url for known providers
+        if provider == "groq":
+            self.base_url = "https://api.groq.com/openai/v1"
+        elif provider == "openai":
+            self.base_url = "https://api.openai.com/v1"
+        elif provider == "openrouter":
+            self.base_url = "https://openrouter.ai/api/v1"
+        else:
+            self.base_url = base_url  # Only use config for unknown/custom providers
         self.host = ollama_host
         self.context_length = context_length or 8192
 
@@ -50,7 +59,7 @@ class LLMClient:
         tokens = re.findall(r"\w+|\S", text)
         chunks = []
         for i in range(0, len(tokens), max_tokens):
-            chunk = "".join(tokens[i:i + max_tokens])
+            chunk = "".join(tokens[i : i + max_tokens])
             chunks.append(chunk)
         return chunks
 
@@ -79,37 +88,28 @@ class LLMClient:
 
     def _build_headers(self):
         # Build HTTP headers for LLM API requests
-        return {
+        headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        if self.provider == "openrouter":
+            # OpenRouter requires Referer and X-Title headers
+            # Change to your app/site if needed
+            headers["HTTP-Referer"] = "https://hawx.local"
+            headers["X-Title"] = "Hawx Recon Agent"
+        return headers
 
     # ========== LLM Query Methods ==========
 
     def get_response(self, prompt):
         # Query the configured LLM provider with the given prompt
         prompt = self.truncate_to_tokens(prompt, self.context_length)
-        if self.provider == "groq":
-            return self._query_groq(prompt)
-        elif self.provider == "openai":
+        if self.provider in ("groq", "openai", "openrouter"):
             return self._query_openai(prompt)
         elif self.provider == "ollama":
             return self._query_ollama(prompt)
         else:
             raise NotImplementedError(f"Unsupported provider: {self.provider}")
-
-    def _query_groq(self, prompt):
-        # Send a prompt to the Groq API
-        try:
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=self._build_headers(),
-                json=self._build_chat_payload(prompt),
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
-        except Exception as e:
-            raise RuntimeError(f"Groq request failed: {e}")
 
     def _query_openai(self, prompt):
         # Send a prompt to the OpenAI-compatible API
@@ -149,40 +149,6 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", e)
             return None
 
-    # def get_corrected_command(self, command, timeout=10):
-    #   Causing more problems than it's solving
-    #     tool = command[0]
-    #     command_str = " ".join(command)
-
-    #     try:
-    #         help_output = subprocess.run(
-    #             [tool, "--help"],
-    #             stdout=subprocess.PIPE,
-    #             stderr=subprocess.STDOUT,
-    #             text=True,
-    #             timeout=timeout,
-    #         ).stdout
-
-    #         if tool.lower() in ("gobuster", "ffuf"):
-    #             help_output += "\n\nSeclists path: /usr/share/seclists"
-    #             help_output += "\n Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
-    #             help_output += "\n FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
-    #             help_output += "\n DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
-    #             help_output += "\n Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
-    #             help_output += "\n Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
-    #     except Exception:
-    #         return command
-
-    #     prompt = self._build_prompt_command_correction(
-    #         command_str, help_output)
-
-    #     try:
-    #         response = self.get_response(prompt)
-    #         corrected = json.loads(self._sanitize_llm_output(response))
-    #         return corrected["corrected_command"].strip().split()
-    #     except Exception:
-    #         return command
-
     def post_step(self, command, command_output_file):
         # Summarize and recommend next steps after running a command
         command_str = " ".join(command)
@@ -202,7 +168,8 @@ class LLMClient:
             response = self.get_response(prompt)
         else:
             chunks = self._chunk_text_by_tokens(
-                command_output, self.context_length - 1000)
+                command_output, self.context_length - 1000
+            )
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_post_step_chunked(
@@ -246,8 +213,7 @@ class LLMClient:
             )
             response = self.get_response(prompt)
         else:
-            chunks = self._chunk_text_by_tokens(
-                full_input, self.context_length - 1000)
+            chunks = self._chunk_text_by_tokens(full_input, self.context_length - 1000)
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_exec_summary_chunked(
@@ -260,7 +226,9 @@ class LLMClient:
         print(response)
 
         # Save the executive summary to a markdown file
-        with open(os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(base_dir, "summary_exec.md"), "w", encoding="utf-8"
+        ) as f:
             f.write(response)
 
         return response
@@ -270,8 +238,7 @@ class LLMClient:
         current_layer = commands[layer]
         prior_layers = commands[:layer]
 
-        prompt = prompt_builder._build_prompt_deduplication(
-            current_layer, prior_layers)
+        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
         response = self.get_response(prompt)
         response = self._sanitize_llm_output(response)
 
