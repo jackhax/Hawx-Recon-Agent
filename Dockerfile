@@ -60,6 +60,7 @@ RUN python3 /tmp/setup.py
 # Copy agent code and entrypoint
 COPY agent/ /opt/agent/
 COPY tools.yaml /opt/agent/
+COPY filter.yaml /opt/agent/
 COPY config.yaml /opt/agent/config.yaml
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh

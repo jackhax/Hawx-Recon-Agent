@@ -1,11 +1,11 @@
 llm:
   provider: openrouter         # Options: ollama, openai, openrouter, groq, etc.
-  model: deepseek/deepseek-chat-v3-0324:free  # Model name for the selected provider
+  model: google/gemini-2.5-pro-preview-03-25  # Model name for the selected provider
   context_length: 60000    # Some models support higher limitsm
 # ollama:
 #   host: http://host.docker.internal:11434
 
-# Notes:
+# Notes:s
 # - To switch models or providers, edit the values above
 # - You can add future providers (e.g., openai, anthropic) here under `llm`
-# - Providers currently supported: groq, ollama
+# - Providers currently supported: groq, ollama, openai, openrouter
