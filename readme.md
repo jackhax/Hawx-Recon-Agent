@@ -14,6 +14,7 @@
 - 🌐 Optional OpenVPN integration
 - 🧠 Markdown summaries of recon
 - 📂 Clean directory structure per target
+- 🧹 Output filtering via filter.yaml (custom regex-based noise reduction)
 
 ---
 
@@ -79,6 +80,24 @@
   - CVEs
   - Attack paths
   - Recommended tools
+
+---
+
+## Output Filtering with filter.yaml
+
+You can reduce noise in tool outputs by specifying regex patterns in a `filter.yaml` file at the project root. For each supported tool (e.g., ffuf, gobuster, nikto), add a list of regex patterns to filter out unwanted lines before logs and summaries are generated.
+
+**Example filter.yaml:**
+```yaml
+ffuf:
+  - .*:: Progress:      # Filters all ffuf progress lines
+gobuster:
+  - ^Progress:          # Filters gobuster progress lines
+nikto:
+  - OSVDB               # Filters Nikto OSVDB noise
+```
+
+Patterns are applied per line, and only lines not matching any pattern are written to logs and used for summarization. This keeps your recon output clean and focused on actionable results.
 
 ---
 
