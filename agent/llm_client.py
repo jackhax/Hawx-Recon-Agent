@@ -74,11 +74,6 @@ class LLMClient:
             output = output[:-3]
         return output
 
-    def truncate_to_tokens(self, text, max_tokens):
-        # Truncate text to a maximum number of tokens for LLM input
-        tokens = re.findall(r"\w+|\S", text)
-        return "".join(tokens[:max_tokens])
-
     def _build_chat_payload(self, prompt):
         # Build the payload for chat-based LLM APIs
         return {
@@ -103,7 +98,6 @@ class LLMClient:
 
     def get_response(self, prompt):
         # Query the configured LLM provider with the given prompt
-        prompt = self.truncate_to_tokens(prompt, self.context_length)
         if self.provider in ("groq", "openai", "openrouter"):
             return self._query_openai(prompt)
         elif self.provider == "ollama":
