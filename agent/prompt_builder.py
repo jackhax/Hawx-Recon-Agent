@@ -151,7 +151,7 @@ For tools requiring wordlists, **use only from the following absolute paths**:
 - `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
 
 Do **not** make up any other wordlist names or paths.
-
+    - Every command's result should be seen on the screen. If you recommend a command that saves output to a file, make sure to read the contents of the file on the terminal.
 ---
 
 ### ✅ Output Format (Strict):
