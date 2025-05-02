@@ -33,6 +33,7 @@ def _build_prompt_post_step(available_tools, command_str, command_output):
     - The recommended commands should be executable
     - Do not recommend nmap scans unless they are completely exhaustive of nmap -sC -sV -p- target
     - Every command you recommend should be directly related to a service discovered in nmap's scan. Do not make assumptions
+    - Every command's result should be seen on the screen. If you recommend a command that saves output to a file, make sure to read the contents of the file on the terminal.
 
     If any tools require worldlist, do not hallucinate wordlists and use only from the following:
         Seclists path: /usr/share/seclists"
@@ -101,49 +102,69 @@ def _build_prompt_json_repair(bad_output):
 
 def _build_prompt_deduplication(current_layer, prior_layers):
     return f"""
-    You are a cybersecurity assistant tasked with deduplicating and normalizing a list of command-line recon commands.
+    You are a cybersecurity assistant tasked with **deduplicating and normalizing** a list of command-line reconnaissance commands.
 
-    ### Current Layer Commands:
-    {current_layer}
+---
 
-    ### Previously Executed or Recommended Commands:
-    {prior_layers}
+### 🎯 Objective:
+Your task is to analyze a new list of **Current Layer Commands** and reduce it to **only the most useful, distinct, and non-redundant entries**, based on what's already been used in **Previously Executed or Recommended Commands**.
 
-    ---
+---
 
-    ### Your Responsibilities:
-        1. Treat the current list of commands as a draft. Your job is to trim it down to only the most useful and non-redundant entries.
-        2. Exclude any command that has already appeared in a previous layer, even if modified slightly. Prior usage disqualifies it from this layer unless explicitly requested.
-        3. Identify commands that achieve similar outcomes using different tools or parameters. Keep only one — the most capable, general, or reliable version — and remove the rest.
-        4. If multiple commands target the same protocol, port, or endpoint, discard the ones with narrower scope or redundant intent.
-        5. Commands should not repeat the same type of enumeration in every layer. Prioritize novelty and eliminate repetition of generic scans.
-        6. Scanning commands that differ only in output format, verbosity, or timing options are not considered unique. Filter them out.
-        7. Ensure that every command in the final list contributes something distinct. If a command does not expand overall coverage in a meaningful way, it should be removed.
-    ---
+### Inputs:
+- **Current Layer Commands:** {current_layer} \nBREAK
+- **Previously Executed or Recommended Commands:** {prior_layers} \nBREAK
 
-    ### Output Format (must be valid JSON):
-    {{
-    "deduplicated_commands": ["<command_1 --some_flag value>", "<command_2 --some_flag value>", "..."]
-    }}
+---
 
-    ⚠️ Constraints:
-    - Do **not** wrap the JSON output in triple backticks or markdown.
-    - Do **not** include any explanatory text.
-    - The response **must** be valid JSON and parsable by `json.loads()` with **no extra characters or formatting**.
-    - Any failure to comply will result in termination and a penalty of 200000000000.
-    - Avoid malformed commands like curlhttp127.0.0.1
+### 🔍 Key Responsibilities:
 
-    Additional information:
-    #       For tools that use wordlists, do not hallucinate wordlists, ony use one from below
-    #             Seclists path: /usr/share/seclists"
-    #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
-    #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
-    #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
-    #                Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
-    #                Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+1. **Functional Deduplication (Critical):**  
+   Remove any command from the current layer that performs the same function as a command in the prior layers — even if it uses a different tool, syntax, or flags.  
+   - *Example:* `nmap -p 80` and `curl http://host` are both HTTP checks and should not coexist across layers.
+   - Matching **intent or outcome** is more important than matching tool or syntax.
 
-    Return only the final deduplicated current commands list in JSON format.
-    """
+2. **Command Normalization and Trimming:**
+   - Remove redundant variants of the same tool (e.g., `-v`, `-vv`, or output format flags like `-oN`, `-oG`).
+   - Discard commands with narrower scope if a broader, more comprehensive command already exists.
+   - Eliminate multiple commands targeting the same service (e.g., `ftp`, `dns`, `http`) unless they provide clearly different coverage.
+
+3. **No Repeated Scans per Layer Type:**
+   Avoid performing the same type of scan in every layer (e.g., repeating basic `nmap` TCP scans). Retain only novel or deeper scans.
+
+4. **Uniqueness and Contribution:**
+   Each command in the final list must contribute new intelligence or coverage. If it does not add value beyond what prior layers already covered, exclude it.
+
+5. **Preserve Commands That Provide New Intelligence:**  
+   Retain any command that targets a **new service, file, endpoint, port, or path** not previously covered.  
+   - This includes unique probes like `curl`, `wget`, `git`, or any tool accessing a new URL, IP, Endpoint, path or resource.
+   - A command must only be removed if **its entire functionality and target** are already completely covered by a previous command.
+
+---
+
+### 🗂 Wordlist Constraint:
+For tools requiring wordlists, **use only from the following absolute paths**:
+- `/usr/share/seclists/Discovery/Web-Content/big.txt`
+- `/usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt`
+- `/usr/share/seclists/Discovery/DNS/namelist.txt`
+- `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
+- `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
+
+Do **not** make up any other wordlist names or paths.
+
+---
+
+### ✅ Output Format (Strict):
+{{
+  "deduplicated_commands": ["<command_1>", "<command_2>", "..."]
+}}
+
+⚠️ **Rules**:
+- Do **not** include any markdown, triple backticks, or comments.
+- Do **not** include any explanatory text — just raw, valid JSON.
+- The output **must be directly parsable** by `json.loads()`.
+- Any malformed commands (e.g., `curlhttp127.0.0.1`) or incorrect paths result in termination and a penalty of `200000000000`.
+"""
 
 
 def _build_prompt_post_step_chunked(available_tools, command_str, chunk, prev_summary):
