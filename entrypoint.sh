@@ -10,6 +10,14 @@ echo "[*] Checking mounted files in /mnt..."
 ls -l /mnt
 echo ""
 
+# === Append custom hosts file to /etc/hosts if provided ===
+if [[ -n "${CUSTOM_HOSTS_FILE:-}" && -f "$CUSTOM_HOSTS_FILE" ]]; then
+    echo "[*] Appending contents of \$CUSTOM_HOSTS_FILE to /etc/hosts..."
+    cat "$CUSTOM_HOSTS_FILE" >> /etc/hosts
+    echo "[+] Custom hosts entries added."
+    echo ""
+fi
+
 # === Start VPN only if OVPN_FILE is provided ===
 if [[ -n "${OVPN_FILE:-}" ]]; then
     echo "[*] Starting OpenVPN using config: $OVPN_FILE"
@@ -50,14 +58,18 @@ else
 fi
 echo ""
 
-# Add machine name to /etc/hosts if provided
-if [[ -n "${MACHINE_NAME:-}" && "$TARGET_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "[*] Mapping $MACHINE_NAME.htb to $TARGET_IP in /etc/hosts"
-    echo "$TARGET_IP $MACHINE_NAME.htb" >> /etc/hosts
-    echo "[+] Host mapping added."
-    echo ""
-elif [[ -n "${MACHINE_NAME:-}" ]]; then
-    echo "[!] Skipping /etc/hosts mapping: '$TARGET_IP' is not an IPv4 address."
+# === Determine domain from hosts file if available ===
+if [[ -n "${CUSTOM_HOSTS_FILE:-}" && -f "$CUSTOM_HOSTS_FILE" ]]; then
+    DOMAIN_NAME=$(awk "\$1 == \"$TARGET_IP\" {print \$2}" "$CUSTOM_HOSTS_FILE" | head -n1)
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        echo "[*] Resolved domain from hosts file: $DOMAIN_NAME"
+        RESOLVED_TARGET="$DOMAIN_NAME"
+    else
+        echo "[!] No matching domain for $TARGET_IP in CUSTOM_HOSTS_FILE. Using raw IP."
+        RESOLVED_TARGET="$TARGET_IP"
+    fi
+else
+    RESOLVED_TARGET="$TARGET_IP"
 fi
 
 # Cap STEPS at 3
@@ -82,7 +94,6 @@ INTERACTIVE_FLAG="${INTERACTIVE:-false}"
 clear
 
 # Run unit tests if TEST_MODE is enabled
-# Run unit tests if TEST_MODE is enabled
 if [[ "${TEST_MODE:-}" == "true" ]]; then
     echo "=== 🧪 Running tests in container ==="
     export PYTHONPATH=/opt/agent  # This points to the directory containing records.py etc.
@@ -92,5 +103,7 @@ if [[ "${TEST_MODE:-}" == "true" ]]; then
     exit $?
 fi
 
+cat /etc/hosts
 
-python3 /opt/agent/main.py "$TARGET_IP" "$STEPS" "$INTERACTIVE_FLAG"
+# ✅ Call main.py with resolved target
+python3 /opt/agent/main.py "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG"
