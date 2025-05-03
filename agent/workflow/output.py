@@ -38,14 +38,14 @@ term_width = shutil.get_terminal_size((80, 20)).columns
 # Global cache for filter patterns (now compiled regex)
 _filter_patterns = None
 
-ansi_escape = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+ansi_escape = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 def clean_line(line):
     # Remove ANSI escape codes
-    line = ansi_escape.sub('', line)
+    line = ansi_escape.sub("", line)
     # Remove non-printable/control characters except newline and tab
-    line = ''.join(c for c in line if c.isprintable() or c in '\n\t')
+    line = "".join(c for c in line if c.isprintable() or c in "\n\t")
     return line
 
 
@@ -53,8 +53,9 @@ def load_filter_patterns():
     global _filter_patterns
     if _filter_patterns is not None:
         return _filter_patterns
-    filter_path = os.path.join(os.path.dirname(
-        os.path.dirname(__file__)), "filter.yaml")
+    filter_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "filter.yaml"
+    )
     if not os.path.exists(filter_path):
         _filter_patterns = {}
         return _filter_patterns
@@ -82,8 +83,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
 
     timestamp = datetime.utcnow().isoformat()
-    output_file = os.path.join(
-        base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
+    output_file = os.path.join(base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
     start_time = time.time()
@@ -91,7 +91,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         with open(output_file, "w", encoding="utf-8") as out:
             # Write the executed command at the top of the file
             out.write(
-                f"# Command: {' '.join(shlex.quote(part) for part in command_parts)}\n\n")
+                f"# Command: {' '.join(shlex.quote(part) for part in command_parts)}\n\n"
+            )
 
             process = subprocess.Popen(
                 command_parts,
@@ -110,8 +111,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                     last_line = ascii_line.strip()
                     # Print the last line of output in-place for user feedback
                     print(f"\r    {' '*(term_width-4)}", end="", flush=True)
-                    print(
-                        f"\r    {last_line[:term_width - 4]}", end="", flush=True)
+                    print(f"\r    {last_line[:term_width - 4]}", end="", flush=True)
 
             print()  # newline after command completes
             process.wait(timeout=300)
