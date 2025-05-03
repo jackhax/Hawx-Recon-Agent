@@ -20,13 +20,14 @@ class Records:
         # List of discovered services (e.g., 'apache 2.4.41')
         self.services = []
         # Path to the YAML file containing tool definitions
-        self.tools_yaml_path = os.path.join(os.path.dirname(__file__), "tools.yaml")
+        self.tools_yaml_path = os.path.join(
+            os.path.dirname(__file__), "tools.yaml")
         # List of all available tools (apt, pip, custom)
         self.available_tools = self.get_tools()
 
     def get_tools(self):
         # Load tool definitions from the YAML file
-        with open(self.tools_yaml_path, "r") as f:
+        with open(self.tools_yaml_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         tools = []
