@@ -103,7 +103,5 @@ if [[ "${TEST_MODE:-}" == "true" ]]; then
     exit $?
 fi
 
-cat /etc/hosts
-
 # ✅ Call main.py with resolved target
 python3 /opt/agent/main.py "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG"
