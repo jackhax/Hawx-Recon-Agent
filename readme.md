@@ -15,6 +15,7 @@
 - 🧠 Markdown summaries of recon
 - 📂 Clean directory structure per target
 - 🧹 Output filtering via filter.yaml (custom regex-based noise reduction)
+- 🌐 Hosts file injection for domain-based targeting
 
 ---
 
@@ -23,7 +24,7 @@
 ```text
 [Host]
 └── hawx.sh
-    ├── Parses flags (IP, --ovpn, --steps, etc.)
+    ├── Parses flags (IP, --ovpn, --steps, --hosts, etc.)
     ├── Launches Docker container
     │   ├── Mounts current directory to /mnt
     │   └── Passes env vars
@@ -33,8 +34,8 @@
 └── entrypoint.sh
     ├── Starts OpenVPN if provided
     ├── Verifies target connectivity
-    ├── Maps hostname if specified
-    └── Launches agent.py
+    ├── Injects custom hosts file to /etc/hosts
+    └── Resolves domain from hosts file and launches agent.py
 
 [agent.py]
 ├── Runs nmap on target
@@ -147,14 +148,20 @@ ollama:
 ## Usage
 
 ```bash
-./hawx.sh [--steps N] [--ovpn file.ovpn] [--interactive] <target_ip/domain>
+./hawx.sh [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive] <target_ip>
 ```
 
 ### Examples:
 ```bash
 ./hawx.sh 192.168.1.10
-./hawx.sh --steps 2 --ovpn vpn.ovpn --hostname target 192.168.1.10
+./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive 10.10.11.58
 ```
+
+> You can specify a hosts file like:
+> ```
+> 10.10.11.58 dog.htb
+> ```
+> The agent will resolve and use `dog.htb` instead of the raw IP wherever possible.
 
 ---
 
@@ -164,7 +171,7 @@ ollama:
 |-----------------|--------------------------------------------------------------|
 | `--steps`       | Number of recon layers (default: 1, max: 3)                  |
 | `--ovpn`        | OpenVPN config file                                          |
-| `--hostname`    | Add target to `/etc/hosts` as `hostname.htb`                |
+| `--hosts`       | File to append to `/etc/hosts` inside container              |
 | `--force-build` | Rebuild Docker image before execution                        |
 | `--interactive` | Ask user's confirmation before executing recommended commands|
 | `--help`        | Show usage help                                              |
