@@ -5,9 +5,9 @@ Installs required system (apt), Python (pip), and custom tools as defined in too
 Intended to be run as root inside the Docker build or setup process.
 """
 
+import os
 import subprocess
 import yaml
-import os
 
 
 def load_config(path="/tmp/tools.yaml"):
