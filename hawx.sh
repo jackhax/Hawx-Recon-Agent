@@ -6,25 +6,25 @@ IMAGE_NAME="hawx-agent"
 FORCE_BUILD=false
 STEPS=1
 OVPN_FILE=""
-MACHINE_NAME=""
 TARGET=""
 INTERACTIVE=false
 TEST_MODE=false
+HOSTS_FILE=""
 
 function show_help() {
     echo ""
-    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hostname NAME] [--interactive] <target>"
+    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hosts FILE] [--interactive] <target>"
     echo ""
     echo "Options:"
     echo "  --force-build   Rebuild the Docker image before execution."
     echo "  --steps N       Number of layers of commands to execute (default: 1, max: 3)."
     echo "  --ovpn FILE     Optional OpenVPN config file."
-    echo "  --hostname NAME Optional hostname to add to /etc/hosts."
+    echo "  --hosts FILE    Optional file whose contents are appended to /etc/hosts inside container."
     echo "  --interactive   Run in interactive LLM-assisted mode."
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
-    echo "  $0 --steps 2 --ovpn vpn.ovpn --hostname dog --interactive 10.10.11.58"
+    echo "  $0 --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive 10.10.11.58"
     exit 0
 }
 
@@ -58,12 +58,16 @@ while [[ $# -gt 0 ]]; do
             OVPN_FILE="$2"
             shift 2
             ;;
-        --hostname)
+        --hosts)
             if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
-                echo "[!] Missing value for --hostname"
+                echo "[!] Missing value for --hosts"
                 exit 1
             fi
-            MACHINE_NAME="$2"
+            HOSTS_FILE="$2"
+            if [[ ! -f "$HOSTS_FILE" ]]; then
+                echo "[!] Hosts file '$HOSTS_FILE' does not exist."
+                exit 1
+            fi
             shift 2
             ;;
         --interactive)
@@ -86,11 +90,10 @@ while [[ $# -gt 0 ]]; do
             TARGET="$1"
             shift
             ;;
-
     esac
 done
 
-# === Validate required argument: TARGET ===
+# === Validate target ===
 if [[ -z "$TARGET" ]]; then
     echo "[!] Missing target (IP or domain)."
     show_help
@@ -136,17 +139,25 @@ if [[ -n "$OVPN_FILE" ]]; then
     DOCKER_OVPN_ENV="-e OVPN_FILE=\"/mnt/$REL_OVPN_FILE\""
 fi
 
+# Mount tests directory only for test mode
+if [[ "$TEST_MODE" == true ]]; then
+    DOCKER_NET_OPTS+=" -v \"$(pwd)/tests\":/mnt/tests"
+fi
+
+# Mount hosts file if provided
+if [[ -n "$HOSTS_FILE" ]]; then
+    ABS_HOSTS_FILE="$(cd "$(dirname "$HOSTS_FILE")" && pwd)/$(basename "$HOSTS_FILE")"
+    REL_HOSTS_FILE="${ABS_HOSTS_FILE#$(pwd)/}"
+    DOCKER_NET_OPTS+=" -v \"$(pwd)/$REL_HOSTS_FILE\":/mnt/custom_hosts"
+    DOCKER_OVPN_ENV+=" -e CUSTOM_HOSTS_FILE=\"/mnt/custom_hosts\""
+fi
+
 # === Build Docker image if needed ===
 if [[ "$FORCE_BUILD" == true || "$(docker images -q "$IMAGE_NAME" 2>/dev/null)" == "" ]]; then
     echo "[*] Building Docker image '$IMAGE_NAME'..."
     docker build --platform=linux/amd64 -t "$IMAGE_NAME" .
 else
     echo "[*] Docker image '$IMAGE_NAME' already exists. Skipping build."
-fi
-
-# Mount tests directory only for test mode
-if [[ "$TEST_MODE" == true ]]; then
-    DOCKER_NET_OPTS+=" -v \"$(pwd)/tests\":/mnt/tests"
 fi
 
 # === Compose Docker run command ===
@@ -164,15 +175,9 @@ if [[ -n "$DOCKER_OVPN_ENV" ]]; then
     DOCKER_CMD+=" $DOCKER_OVPN_ENV"
 fi
 
-if [[ -n "$MACHINE_NAME" ]]; then
-    DOCKER_CMD+=" -e MACHINE_NAME=\"$MACHINE_NAME\""
-fi
-
 if [[ "$TEST_MODE" == true ]]; then
     DOCKER_CMD+=" -e TEST_MODE=true"
 fi
-
-
 
 DOCKER_CMD+=" $IMAGE_NAME"
 

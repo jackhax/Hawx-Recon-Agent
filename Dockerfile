@@ -32,13 +32,16 @@ RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt
     rm /tmp/requirements.txt && \
     python3 /tmp/setup.py
 
-# Copy agent code and entrypoint
+# Copy agent code and configs
 COPY agent/ /opt/agent/
 COPY tests/ /opt/agent/tests/
 COPY tools.yaml /opt/agent/
 COPY filter.yaml /opt/agent/
 COPY config.yaml /opt/agent/config.yaml
+
+# Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 
+# Use the custom entrypoint that appends CUSTOM_HOSTS_FILE to /etc/hosts
 ENTRYPOINT ["/opt/entrypoint.sh"]
