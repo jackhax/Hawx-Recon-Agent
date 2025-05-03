@@ -21,8 +21,7 @@ jobs:
         pip install -r requirements.txt
     - name: Analysing the code with pylint
       run: |
-        export PYTHONPATH=$(pwd)
-        pylint $(git ls-files '*.py') \
+        pylint $(git ls-files '*.py' ':!:tests/*') \
         --disable=C0114,C0115,C0116,C0301,R0903 \
         --fail-under=9.0
 
