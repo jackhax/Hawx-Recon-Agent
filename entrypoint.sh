@@ -80,4 +80,17 @@ fi
 INTERACTIVE_FLAG="${INTERACTIVE:-false}"
 
 clear
+
+# Run unit tests if TEST_MODE is enabled
+# Run unit tests if TEST_MODE is enabled
+if [[ "${TEST_MODE:-}" == "true" ]]; then
+    echo "=== 🧪 Running tests in container ==="
+    export PYTHONPATH=/opt/agent  # This points to the directory containing records.py etc.
+    echo "PYTHONPATH set to: $PYTHONPATH"
+    cd /mnt/tests || exit 1
+    pytest -s --disable-warnings -q
+    exit $?
+fi
+
+
 python3 /opt/agent/main.py "$TARGET_IP" "$STEPS" "$INTERACTIVE_FLAG"

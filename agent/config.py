@@ -9,7 +9,7 @@ import yaml
 from dotenv import load_dotenv
 
 
-def load_config(config_path="/mnt/config.yaml"):
+def load_config(config_path=None):
     """Load config.yaml and .env (for API key only)"""
     load_dotenv()  # Load environment variables from .env file
 
@@ -20,8 +20,14 @@ def load_config(config_path="/mnt/config.yaml"):
         raise ValueError("LLM_API_KEY must be set in the .env file.")
 
     # Load structured config from YAML file
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"config.yaml not found at {config_path}")
+    # Try default locations
+    if config_path is None:
+        if os.path.exists("config.yaml"):
+            config_path = "config.yaml"
+        elif os.path.exists("/opt/agent/config.yaml"):
+            config_path = "/opt/agent/config.yaml"
+        else:
+            raise FileNotFoundError("config.yaml not found in known locations")
 
     with open(config_path, "r") as f:
         raw = yaml.safe_load(f)

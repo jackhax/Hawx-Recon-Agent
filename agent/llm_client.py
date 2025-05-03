@@ -234,7 +234,6 @@ class LLMClient:
         # Deduplicate commands for the current layer using LLM
         current_layer = commands[layer]
         prior_layers = commands[:layer]
-
         prompt = prompt_builder._build_prompt_deduplication(
             current_layer, prior_layers)
         response = self.get_response(prompt)

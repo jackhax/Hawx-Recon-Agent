@@ -8,59 +8,61 @@ JSON repair, deduplication, and executive summary generation.
 
 def _build_prompt_post_step(available_tools, command_str, command_output):
     return f"""
-    You are a security assistant analyzing the output of the following command:
+You are a security assistant analyzing the output of the following command:
 
-    {command_str}
+{command_str}
 
-    Your task is to:
+Your task is to:
 
-    1. Provide a **Detailed summary** of the findings. Focus on findings like services, end points, versions, possible vulnerabilities, and anything unusual and include all findings.
-    2. Recommend a list of **next commands to run**, based on the current output and the tools available. These should assist in further reconnaissance, vulnerability discovery, or exploitation.
+1. Provide a **detailed, accurate summary** of all findings — including visible services, endpoints, versions, banners, and any unusual behavior or hints toward vulnerabilities.
+2. Recommend a list of **next actionable commands** that further reconnaissance, vulnerability discovery, or exploitation — strictly based on this output.
 
-    ### Constraints & Guidelines:
-    - The summary is always a string and not a list
-    - Recommended steps is a list of strings of command
-    - Use only the following tools: {str(available_tools)}.
-    - **Avoid recommending brute-force attacks.**
-    - The summary must be **clear and simple**.
-    - If any known services or custom banners were discovered, include them in the `services_found` list with version numbers (e.g., "apache 2.4.41"). This format should be compatible with tools like searchsploit. If no services are found, return an empty list.
-    - **Avoid recommending duplicate tools** (e.g., Gobuster twice).
-    - Do **not hallucinate** flags.
-    - The **response must be raw JSON only**. Do **not** wrap the response in triple backticks (` ``` ` or ` ```json `).
-    - The response **must** be a valid JSON object parsable with `json.loads()`.
-    - Your response must always be json
-    - Failure to return response in valid json will result in you termination and penalty of 200000000000
-    - The recommended commands should be executable
-    - Do not recommend nmap scans unless they are completely exhaustive of nmap -sC -sV -p- target
-    - Every command you recommend should be directly related to a service discovered in nmap's scan. Do not make assumptions
-    - Every command's result should be seen on the screen. If you recommend a command that saves output to a file, make sure to read the contents of the file on the terminal.
+---
 
-    If any tools require worldlist, do not hallucinate wordlists and use only from the following:
-        Seclists path: /usr/share/seclists"
-    #                Big.txt: /usr/share/seclists/Discovery/Web-Content/big.txt"
-    #                FTP: /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt"
-    #                DNS: /usr/share/seclists/Discovery/DNS/namelist.txt"
-    #                Usernames: /usr/share/seclists/Usernames/top-usernames-shortlist.txt"
-    #                Passwords: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+### Constraints & Guidelines:
 
-    ### Example Output Format:
-    {{
-    "summary": "<summary_text>",
-    "recommended_steps": [
-        "<command_1> --flag --flag --flag -f",
-        "<command_2> --flag --flag --flag -f",
-        "command_3 --flag --flag --flag -f"
-        ...
-    ],
-    "services_found": [
-        "<service_1>",
-        "<service_2>"
-    ]
-    }}
+- The summary must be a **plain string**, not a list.
+- `recommended_steps` must be a **list of executable commands**, each string a valid shell command.
+- Use only from these tools: {str(available_tools)}.
+- Do **not** suggest brute-force attacks.
+- Do **not** hallucinate or fabricate flags or tool features.
+- Do **not** suggest commands unless directly supported by current findings.
+- If **multiple tools probe the same service differently**, recommend all **if each yields new insights** (e.g., `dirb` and `ffuf` can coexist).
+- Prefer **breadth and depth over tool uniqueness** — retain diverse tools **unless exact redundancy is confirmed**.
+- All commands must **print useful output to screen**.
+- Do not suggest another `nmap` scan unless it covers **full TCP port + service/version detection** (`-sC -sV -p-`).
+- If a tool requires a wordlist, use only from:
+    - `/usr/share/seclists/Discovery/Web-Content/big.txt`
+    - `/usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt`
+    - `/usr/share/seclists/Discovery/DNS/namelist.txt`
+    - `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
+    - `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
 
-    ### Command Output:
-    {command_output}
-    """
+---
+
+### Critical Logic:
+
+- Do **not remove** any command that contributes **unique coverage or intelligence** — even if it's similar in purpose.
+- Treat **targeted probes** (like `.git`, `robots.txt`, `config.zip`, `/server-status`, etc.) as **high-signal** unless already fully retrieved.
+- **Never drop commands that scan new paths, test specific endpoints, or involve targeted enumeration**.
+
+---
+
+### Output Requirements:
+
+- Respond with a single, valid JSON object. Must include:
+    - `"summary"`: short string summarizing findings
+    - `"recommended_steps"`: list of command strings
+    - `"services_found"`: list of strings (e.g., `apache 2.4.41`)
+- Do **not** include markdown, comments, or explanations.
+- Response **must be parseable by `json.loads()`**.
+- Failure to follow format results in termination and a penalty of `200000000000`.
+
+---
+
+### Command Output:
+{command_output}
+"""
 
 
 def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
@@ -102,7 +104,7 @@ def _build_prompt_json_repair(bad_output):
 
 def _build_prompt_deduplication(current_layer, prior_layers):
     return f"""
-    You are a cybersecurity assistant tasked with **deduplicating and normalizing** a list of command-line reconnaissance commands.
+You are a cybersecurity assistant tasked with **deduplicating and normalizing** a list of command-line reconnaissance commands.
 
 ---
 
@@ -121,8 +123,9 @@ Your task is to analyze a new list of **Current Layer Commands** and reduce it t
 
 1. **Functional Deduplication (Critical):**  
    Remove any command from the current layer that performs the same function as a command in the prior layers — even if it uses a different tool, syntax, or flags.  
-   - *Example:* `nmap -p 80` and `curl http://host` are both HTTP checks and should not coexist across layers.
-   - Matching **intent or outcome** is more important than matching tool or syntax.
+   - Deduplicate based on **function and target scope**, not tool name.
+   - If two or more commands perform **the same action on the same target** (e.g., port scan, web content discovery, file retrieval), retain only the most informative one.
+   - Avoid keeping multiple commands that **differ only by tool or minor flags**, unless they provide **significantly different coverage or output**.
 
 2. **Command Normalization and Trimming:**
    - Remove redundant variants of the same tool (e.g., `-v`, `-vv`, or output format flags like `-oN`, `-oG`).
@@ -150,8 +153,9 @@ For tools requiring wordlists, **use only from the following absolute paths**:
 - `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
 - `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
 
-Do **not** make up any other wordlist names or paths.
-    - Every command's result should be seen on the screen. If you recommend a command that saves output to a file, make sure to read the contents of the file on the terminal.
+Do **not** make up any other wordlist names or paths.  
+Every command's result should be visible on screen — if a command saves output to a file, it must include a `cat` or equivalent follow-up to display it.
+
 ---
 
 ### ✅ Output Format (Strict):

@@ -20,7 +20,6 @@ apt:
   - nbtscan
   - seclists
   - curl
-  - wget
   - git
   - unzip
   - iproute2
@@ -34,6 +33,7 @@ apt:
 
 pip:
   - httpie
+  - git-dumper
 
 custom:
   swaks: curl -o /usr/local/bin/swaks https://jetmore.org/john/code/swaks/files/swaks && chmod +x /usr/local/bin/swaks

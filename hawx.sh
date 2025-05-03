@@ -9,6 +9,7 @@ OVPN_FILE=""
 MACHINE_NAME=""
 TARGET=""
 INTERACTIVE=false
+TEST_MODE=false
 
 function show_help() {
     echo ""
@@ -69,6 +70,10 @@ while [[ $# -gt 0 ]]; do
             INTERACTIVE=true
             shift
             ;;
+        --test)
+            TEST_MODE=true
+            shift
+            ;;
         -*)
             echo "[!] Unknown flag: $1"
             exit 1
@@ -81,6 +86,7 @@ while [[ $# -gt 0 ]]; do
             TARGET="$1"
             shift
             ;;
+
     esac
 done
 
@@ -138,6 +144,11 @@ else
     echo "[*] Docker image '$IMAGE_NAME' already exists. Skipping build."
 fi
 
+# Mount tests directory only for test mode
+if [[ "$TEST_MODE" == true ]]; then
+    DOCKER_NET_OPTS+=" -v \"$(pwd)/tests\":/mnt/tests"
+fi
+
 # === Compose Docker run command ===
 DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
@@ -156,6 +167,12 @@ fi
 if [[ -n "$MACHINE_NAME" ]]; then
     DOCKER_CMD+=" -e MACHINE_NAME=\"$MACHINE_NAME\""
 fi
+
+if [[ "$TEST_MODE" == true ]]; then
+    DOCKER_CMD+=" -e TEST_MODE=true"
+fi
+
+
 
 DOCKER_CMD+=" $IMAGE_NAME"
 

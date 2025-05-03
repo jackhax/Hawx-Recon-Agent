@@ -14,6 +14,7 @@ from datetime import datetime
 import shutil
 import yaml
 import re
+import shlex
 
 
 def print_banner():
@@ -88,7 +89,10 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     start_time = time.time()
     try:
         with open(output_file, "w", encoding="utf-8") as out:
-            # Run the command as a subprocess and capture output
+            # Write the executed command at the top of the file
+            out.write(
+                f"# Command: {' '.join(shlex.quote(part) for part in command_parts)}\n\n")
+
             process = subprocess.Popen(
                 command_parts,
                 stdout=subprocess.PIPE,
