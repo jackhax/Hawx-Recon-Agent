@@ -29,7 +29,7 @@ def load_config(config_path=None):
         else:
             raise FileNotFoundError("config.yaml not found in known locations")
 
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
     # Compose config dictionary from loaded values
