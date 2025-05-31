@@ -10,10 +10,12 @@ TARGET=""
 INTERACTIVE=false
 TEST_MODE=false
 HOSTS_FILE=""
+HOST=""
+WEBSITE=""
 
 function show_help() {
     echo ""
-    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hosts FILE] [--interactive] <target>"
+    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hosts FILE] [--interactive] --host <ip|domain> | --website <url>"
     echo ""
     echo "Options:"
     echo "  --force-build   Rebuild the Docker image before execution."
@@ -21,10 +23,13 @@ function show_help() {
     echo "  --ovpn FILE     Optional OpenVPN config file."
     echo "  --hosts FILE    Optional file whose contents are appended to /etc/hosts inside container."
     echo "  --interactive   Run in interactive LLM-assisted mode."
+    echo "  --host          Target IP or domain name (mutually exclusive with --website)."
+    echo "  --website       Target website URL (must include http:// or https://, mutually exclusive with --host)."
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
-    echo "  $0 --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive 10.10.11.58"
+    echo "  $0 --host 10.10.11.58"
+    echo "  $0 --website https://example.com"
     exit 0
 }
 
@@ -78,34 +83,57 @@ while [[ $# -gt 0 ]]; do
             TEST_MODE=true
             shift
             ;;
-        -*)
-            echo "[!] Unknown flag: $1"
-            exit 1
-            ;;
-        *)
-            if [[ -n "$TARGET" ]]; then
-                echo "[!] Error: Multiple targets specified. Only one target (IP or domain) is allowed."
+        --host)
+            if [[ -n "$HOST" || -n "$WEBSITE" ]]; then
+                echo "[!] Only one of --host or --website may be specified."
                 exit 1
             fi
-            TARGET="$1"
-            shift
+            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
+                echo "[!] Missing value for --host"
+                exit 1
+            fi
+            HOST="$2"
+            shift 2
+            ;;
+        --website)
+            if [[ -n "$HOST" || -n "$WEBSITE" ]]; then
+                echo "[!] Only one of --host or --website may be specified."
+                exit 1
+            fi
+            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
+                echo "[!] Missing value for --website"
+                exit 1
+            fi
+            WEBSITE="$2"
+            shift 2
+            ;;
+        *)
+            echo "[!] Unknown or misplaced argument: $1"
+            exit 1
             ;;
     esac
+    
 done
 
 # === Validate target ===
-if [[ -z "$TARGET" ]]; then
-    echo "[!] Missing target (IP or domain)."
+if [[ -z "$HOST" && -z "$WEBSITE" ]]; then
+    echo "[!] You must specify either --host or --website."
     show_help
 fi
-
-if ! [[ "$TARGET" =~ ^([a-zA-Z0-9.-]+|\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)$ ]]; then
-    echo "[!] Invalid target format: $TARGET"
+if [[ -n "$HOST" && -n "$WEBSITE" ]]; then
+    echo "[!] Only one of --host or --website may be specified."
     exit 1
 fi
 
 # === Clean workspace ===
-rm -rf triage/"$TARGET"
+if [[ -n "$HOST" ]]; then
+    rm -rf triage/"$HOST"
+fi
+if [[ -n "$WEBSITE" ]]; then
+    # Use domain as folder name (strip protocol and path)
+    DOMAIN=$(echo "$WEBSITE" | sed -E 's~https?://([^/]+).*~\1~')
+    rm -rf triage/"$DOMAIN"
+fi
 
 # === Load only LLM_API_KEY from .env ===
 if [[ ! -f .env ]]; then
@@ -163,18 +191,20 @@ fi
 # === Compose Docker run command ===
 DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
--e TARGET_IP=\"$TARGET\" \
 -e STEPS=\"$STEPS\" \
 -e LLM_API_KEY=\"$LLM_API_KEY\""
-
+if [[ -n "$HOST" ]]; then
+    DOCKER_CMD+=" -e TARGET_HOST=\"$HOST\""
+fi
+if [[ -n "$WEBSITE" ]]; then
+    DOCKER_CMD+=" -e TARGET_WEBSITE=\"$WEBSITE\""
+fi
 if [[ "$INTERACTIVE" == true ]]; then
     DOCKER_CMD+=" -e INTERACTIVE=true"
 fi
-
 if [[ -n "$DOCKER_OVPN_ENV" ]]; then
     DOCKER_CMD+=" $DOCKER_OVPN_ENV"
 fi
-
 if [[ "$TEST_MODE" == true ]]; then
     DOCKER_CMD+=" -e TEST_MODE=true"
 fi

@@ -9,3 +9,5 @@ llm:
 # - To switch models or providers, edit the values above
 # - You can add future providers (e.g., openai, anthropic) here under `llm`
 # - Providers currently supported: groq, ollama, openai, openrouter
+  # model: anthropic/claude-sonnet-4  # Model name for the selected provider
+# 

@@ -30,6 +30,8 @@ apt:
   - python3-pip
   - golang
   - netcat-traditional
+  - wpscan
+  - whatweb
 
 pip:
   - httpie
