@@ -104,18 +104,46 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             )
 
             last_line = ""
-            for line in process.stdout:
-                if not should_filter_line(tool, line):
-                    ascii_line = clean_line(line)
-                    out.write(ascii_line)
-                    out.flush()
-                    last_line = ascii_line.strip()
-                    print(f"\r    {' '*(term_width-4)}", end="", flush=True)
-                    print(
-                        f"\r    {last_line[:term_width - 4]}", end="", flush=True)
-
+            last_update = time.time()
+            timeout = 60  # seconds of inactivity
+            from select import select
+            while True:
+                rlist, _, _ = select([process.stdout], [], [], 1)
+                time_since_update = time.time() - last_update
+                if rlist:
+                    line = process.stdout.readline()
+                    if not line:
+                        break
+                    if not should_filter_line(tool, line):
+                        ascii_line = clean_line(line)
+                        out.write(ascii_line)
+                        out.flush()
+                        last_line = ascii_line.strip()
+                        last_update = time.time()
+                        # Clear the line before printing new output
+                        print(f"\r{' ' * (term_width-1)}\r",
+                              end="", flush=True)
+                        print(
+                            f"    {last_line[:term_width - 4]}", end="", flush=True)
+                else:
+                    # No output, just check inactivity timeout (no print)
+                    if time_since_update > timeout:
+                        process.terminate()
+                        out.write(
+                            "\nProcess terminated due to 60s inactivity timeout\n")
+                        print(
+                            "\n[!] Process terminated due to 60s inactivity timeout")
+                        return []
+                if process.poll() is not None:
+                    break
             print()  # newline after command completes
-            process.wait(timeout=300)
+            # Wait for process to exit if not already
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                out.write("\nProcess terminated after completion wait timeout\n")
+                return []
 
     except subprocess.TimeoutExpired:
         # Handle command timeout (5 minutes)

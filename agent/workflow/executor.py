@@ -158,10 +158,7 @@ class ReconExecutor:
                     base_domain = self._get_domain(web_url)
                     web_cmds = [
                         f"whatweb {web_url}",
-                        f"curl -I {web_url}",
-                        # f"ffuf -u {web_url} -H 'Host: FUZZ' -w /usr/share/seclists/Discovery/DNS/namelist.txt -fs 0",
-                        f"ffuf -u {web_url}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt",
-                        f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt",
+                        f"subfinder -d {base_domain}",
                     ]
                     if self.interactive:
                         web_cmds = self._interactive_tool_menu(web_cmds)
@@ -171,10 +168,7 @@ class ReconExecutor:
             base_domain = self._get_domain(self.target)
             web_cmds = [
                 f"whatweb {self.target}",
-                f"curl -I {self.target}",
-                # f"ffuf -u {self.target} -H 'Host: FUZZ' -w /usr/share/seclists/Discovery/DNS/namelist.txt -fs 0",
-                f"ffuf -u {self.target}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt",
-                f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt",
+                f"subfinder -d {base_domain}",
             ]
             if self.interactive:
                 web_cmds = self._interactive_tool_menu(web_cmds)
@@ -203,5 +197,5 @@ class ReconExecutor:
             run_searchsploit(self.records.services, self.base_dir)
 
         # Generate executive summary and export to PDF
-        self.llm_client.executive_summary(self.target)
+        self.llm_client.executive_summary(self.base_dir)
         export_summary_to_pdf(self.base_dir)

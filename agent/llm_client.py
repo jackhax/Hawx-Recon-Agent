@@ -181,10 +181,9 @@ class LLMClient:
             # Attempt to repair if JSON parsing fails
             return self.repair_llm_response(response)
 
-    def executive_summary(self, machine_ip):
+    def executive_summary(self, base_dir):
         """Generate a detailed executive summary for the recon session."""
         print("\n\033[94m[*] Preparing Executive Summary...\033[0m\n")
-        base_dir = os.path.join("/mnt/triage", machine_ip)
         summary_file = os.path.join(base_dir, "summary.md")
         exploits_file = os.path.join(base_dir, "exploits.txt")
 
@@ -206,7 +205,7 @@ class LLMClient:
         # Use chunked prompt if summary is too large
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_exec_summary(
-                machine_ip, summary_content, exploits_content
+                os.path.basename(base_dir), summary_content, exploits_content
             )
             response = self.get_response(prompt)
         else:
@@ -215,7 +214,7 @@ class LLMClient:
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_exec_summary_chunked(
-                    machine_ip, chunk, summary_so_far
+                    os.path.basename(base_dir), chunk, summary_so_far
                 )
                 summary_so_far = self.get_response(prompt)
             response = summary_so_far

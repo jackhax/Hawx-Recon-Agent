@@ -5,7 +5,7 @@ LABEL version="1.0"
 LABEL description="Recon Agent for automated offensive security assessments"
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV GO_VERSION=1.22.0
+ENV GO_VERSION=1.24.0
 ENV PATH="/usr/local/go/bin:$PATH"
 
 # Install system dependencies and Python 3.10 with required modules
@@ -42,6 +42,12 @@ COPY config.yaml /opt/agent/config.yaml
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+ENV PATH="/root/go/bin:${PATH}"
+
+RUN subfinder --version
+
+# RUN sleep 20
 
 # Use the custom entrypoint that appends CUSTOM_HOSTS_FILE to /etc/hosts
 ENTRYPOINT ["/opt/entrypoint.sh"]

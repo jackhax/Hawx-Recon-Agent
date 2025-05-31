@@ -58,7 +58,7 @@ Your task is to:
 - Do **not** include markdown, comments, or explanations.
 - Response **must be parseable by `json.loads()`**.
 - Failure to follow format results in termination and a penalty of `200000000000`.
-
+- Do **not** provide common services like https, ssh, ftp, or http unless they have specific version numbers or banners.
 ---
 
 ### Command Output:
