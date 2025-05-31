@@ -159,6 +159,9 @@ class ReconExecutor:
                     web_cmds = [
                         f"whatweb {web_url}",
                         f"subfinder -d {base_domain}",
+                        f"subfinder -d {base_domain} -silent | naabu -p 80,443,22,21,25 -silent",
+                        f"subfinder -d {base_domain} -silent | dnsx -a -resp-only -silent",
+                        f"subfinder -d {base_domain} -silent | httpx -silent",
                     ]
                     if self.interactive:
                         web_cmds = self._interactive_tool_menu(web_cmds)
@@ -169,6 +172,9 @@ class ReconExecutor:
             web_cmds = [
                 f"whatweb {self.target}",
                 f"subfinder -d {base_domain}",
+                f"subfinder -d {base_domain} -silent | naabu -p 80,443,22,21,25 -silent",
+                f"subfinder -d {base_domain} -silent | dnsx -a -resp-only -silent",
+                f"subfinder -d {base_domain} -silent | httpx -silent",
             ]
             if self.interactive:
                 web_cmds = self._interactive_tool_menu(web_cmds)

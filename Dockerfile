@@ -18,10 +18,19 @@ RUN apt-get update && \
         netcat-traditional && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpcap-dev \
+    libpcap0.8 \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Go
 RUN curl -OL https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm go${GO_VERSION}.linux-amd64.tar.gz
+
+ENV PATH="/root/go/bin:${PATH}"
 
 # Set working directory
 WORKDIR /opt/agent
@@ -42,12 +51,6 @@ COPY config.yaml /opt/agent/config.yaml
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
-
-ENV PATH="/root/go/bin:${PATH}"
-
-RUN subfinder --version
-
-# RUN sleep 20
 
 # Use the custom entrypoint that appends CUSTOM_HOSTS_FILE to /etc/hosts
 ENTRYPOINT ["/opt/entrypoint.sh"]

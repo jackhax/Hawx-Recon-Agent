@@ -145,9 +145,10 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", exc)
             return None
 
-    def post_step(self, command, command_output_file):
-        """Summarize and recommend next steps after running a command."""
+    def post_step(self, command, command_output_file, previous_commands=None):
+        """Summarize and recommend next steps after running a command, considering previous commands."""
         command_str = " ".join(command)
+        previous_commands = previous_commands or []
 
         try:
             with open(command_output_file, "r", encoding="utf-8") as f:
@@ -159,7 +160,7 @@ class LLMClient:
         # Use chunked prompt if output is too large for LLM context
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_post_step(
-                self.available_tools, command_str, command_output
+                self.available_tools, command_str, command_output, previous_commands
             )
             response = self.get_response(prompt)
         else:

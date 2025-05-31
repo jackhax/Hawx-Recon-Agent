@@ -41,3 +41,5 @@ custom:
   smbmap: git clone https://github.com/ShawnDEvans/smbmap.git /opt/smbmap && ln -s /opt/smbmap/smbmap.py /usr/local/bin/smbmap
   httpx: go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
   subfinder: go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+  dnsx: go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest
+  naabu: go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
