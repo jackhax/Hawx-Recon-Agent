@@ -87,6 +87,19 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
+    # Collect all previously executed commands for DRY logic
+    previous_commands = []
+    if os.path.exists(metadata_file):
+        try:
+            with open(metadata_file, "r", encoding="utf-8") as mf:
+                meta = json.load(mf)
+                for entry in meta:
+                    if isinstance(entry, dict) and "command" in entry:
+                        # Flatten command list to string for DRY
+                        previous_commands.append(" ".join(entry["command"]))
+        except Exception:
+            pass
+
     start_time = time.time()
     try:
         with open(output_file, "w", encoding="utf-8") as out:
@@ -104,18 +117,46 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             )
 
             last_line = ""
-            for line in process.stdout:
-                if not should_filter_line(tool, line):
-                    ascii_line = clean_line(line)
-                    out.write(ascii_line)
-                    out.flush()
-                    last_line = ascii_line.strip()
-                    print(f"\r    {' '*(term_width-4)}", end="", flush=True)
-                    print(
-                        f"\r    {last_line[:term_width - 4]}", end="", flush=True)
-
+            last_update = time.time()
+            timeout = 60  # seconds of inactivity
+            from select import select
+            while True:
+                rlist, _, _ = select([process.stdout], [], [], 1)
+                time_since_update = time.time() - last_update
+                if rlist:
+                    line = process.stdout.readline()
+                    if not line:
+                        break
+                    if not should_filter_line(tool, line):
+                        ascii_line = clean_line(line)
+                        out.write(ascii_line)
+                        out.flush()
+                        last_line = ascii_line.strip()
+                        last_update = time.time()
+                        # Clear the line before printing new output
+                        print(f"\r{' ' * (term_width-1)}\r",
+                              end="", flush=True)
+                        print(
+                            f"    {last_line[:term_width - 4]}", end="", flush=True)
+                else:
+                    # No output, just check inactivity timeout (no print)
+                    if time_since_update > timeout:
+                        process.terminate()
+                        out.write(
+                            "\nProcess terminated due to 60s inactivity timeout\n")
+                        print(
+                            "\n[!] Process terminated due to 60s inactivity timeout")
+                        return []
+                if process.poll() is not None:
+                    break
             print()  # newline after command completes
-            process.wait(timeout=300)
+            # Wait for process to exit if not already
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                out.write("\nProcess terminated after completion wait timeout\n")
+                return []
 
     except subprocess.TimeoutExpired:
         # Handle command timeout (5 minutes)
@@ -130,7 +171,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
     duration = round(time.time() - start_time, 2)
     # Summarize command output and recommend next steps using LLM
-    resp = llm_client.post_step(command_parts, output_file)
+    resp = llm_client.post_step(
+        command_parts, output_file, previous_commands=previous_commands)
     if not isinstance(resp, dict):
         return []
 
@@ -167,6 +209,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         # Append a markdown summary for this tool to the summary file
         with open(summary_file, "a", encoding="utf-8") as sf:
             sf.write(f"## {tool}\n\n")
+            sf.write(
+                f"**Command Executed:**\n\n    {' '.join(shlex.quote(part) for part in command_parts)}\n\n")
             sf.write("**Summary**\n\n")
             sf.write(summary_text + "\n\n")
 
@@ -210,10 +254,20 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
 
 def run_searchsploit(services, base_dir):
-    """Run SearchSploit for each discovered service and append results to exploits.txt."""
+    """Run SearchSploit for each discovered service and append results to exploits.txt, skipping common services unless they have a version number."""
     output_file = os.path.join(base_dir, "exploits.txt")
+    COMMON_SERVICES = {
+        "http", "https", "ssh", "ftp", "smtp", "dns", "smb", "pop3", "imap", "ntp", "rdp", "mysql", "mssql", "postgres", "oracle", "telnet", "ldap", "snmp", "rpc", "nfs", "kerberos", "dhcp", "vnc", "cups", "printer", "rsync", "netbios"
+    }
     with open(output_file, "a", encoding="utf-8") as f:
         for svc in services:
+            svc_lower = svc.lower()
+            # If the service is common and does NOT have a version number, skip it
+            if any(common in svc_lower for common in COMMON_SERVICES):
+                # Check for a version number (e.g., 'http 2.4.41' or 'ssh 7.9p1')
+                import re
+                if not re.search(r"\\b(?:" + "|".join(COMMON_SERVICES) + ")\\b\\s*[0-9]+[.0-9a-zA-Z_-]*", svc_lower):
+                    continue  # Skip if no version number
             try:
                 result = subprocess.run(
                     ["searchsploit", svc],

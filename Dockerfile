@@ -5,7 +5,7 @@ LABEL version="1.0"
 LABEL description="Recon Agent for automated offensive security assessments"
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV GO_VERSION=1.22.0
+ENV GO_VERSION=1.24.0
 ENV PATH="/usr/local/go/bin:$PATH"
 
 # Install system dependencies and Python 3.10 with required modules
@@ -18,10 +18,19 @@ RUN apt-get update && \
         netcat-traditional && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpcap-dev \
+    libpcap0.8 \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Go
 RUN curl -OL https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm go${GO_VERSION}.linux-amd64.tar.gz
+
+ENV PATH="/root/go/bin:${PATH}"
 
 # Set working directory
 WORKDIR /opt/agent

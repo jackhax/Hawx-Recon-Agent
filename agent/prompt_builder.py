@@ -5,9 +5,10 @@ Provides functions to construct prompts for LLM-based summarization, command rec
 JSON repair, deduplication, and executive summary generation.
 """
 
-
-def _build_prompt_post_step(available_tools, command_str, command_output):
-    """Build prompt for post-step LLM summarization and recommendation."""
+def _build_prompt_post_step(available_tools, command_str, command_output, previous_commands=None):
+    """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, and searchsploit service extraction enforcement."""
+    previous_commands = previous_commands or []
+    previous_commands_str = "\n".join(previous_commands)
     return f"""
 You are a security assistant analyzing the output of the following command:
 
@@ -16,7 +17,9 @@ You are a security assistant analyzing the output of the following command:
 Your task is to:
 
 1. Provide a **detailed, accurate summary** of all findings — including visible services, endpoints, versions, banners, and any unusual behavior or hints toward vulnerabilities.
-2. Recommend a list of **next actionable commands** that further reconnaissance, vulnerability discovery, or exploitation — strictly based on this output.
+2. **Include proof or evidence for each key finding in the summary.** This could be an IOC (Indicator of Compromise), a concrete value, a banner, a file path, a subdomain, a hash, a credential, or any other direct indicator from the command output. The summary should not just state what was found, but also show a snippet or value from the output as proof.
+3. Recommend a list of **next actionable commands** that further reconnaissance, vulnerability discovery, or exploitation — strictly based on this output.
+4. **Extract and output service names and versions in a format suitable for use with searchsploit.** Do NOT output random strings, generic names, or tool banners. Only output real software/service names (e.g., 'apache 2.4.41', 'nginx 1.18.0', 'phpmyadmin 5.1.0', 'vsftpd 3.0.3'). If no valid service is found, leave the list empty.
 
 ---
 
@@ -30,7 +33,8 @@ Your task is to:
 - Do **not** suggest commands unless directly supported by current findings.
 - If **multiple tools probe the same service differently**, recommend all **if each yields new insights** (e.g., `dirb` and `ffuf` can coexist).
 - Prefer **breadth and depth over tool uniqueness** — retain diverse tools **unless exact redundancy is confirmed**.
-- All commands must **print useful output to screen**.
+- All commands must **print useful output directly to the console**. Do **not** recommend commands that only download files, save output to files, or require manual file inspection. If a command saves output to a file, it must include a follow-up command (like `cat` or `grep`) to print the result to the console.
+- Do **not** recommend commands like `wget`, `curl -O`, or `git clone` unless the output is printed to the console.
 - Do not suggest another `nmap` scan unless it covers **full TCP port + service/version detection** (`-sC -sV -p-`).
 - If a tool requires a wordlist, use only from:
     - `/usr/share/seclists/Discovery/Web-Content/big.txt`
@@ -38,7 +42,8 @@ Your task is to:
     - `/usr/share/seclists/Discovery/DNS/namelist.txt`
     - `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
     - `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
-
+- **Do not suggest any command that has already been executed.** Here is a list of previously executed commands (do not repeat any of these):
+{previous_commands_str}
 ---
 
 ### Critical Logic:
@@ -52,13 +57,13 @@ Your task is to:
 ### Output Requirements:
 
 - Respond with a single, valid JSON object. Must include:
-    - `"summary"`: short string summarizing findings
+    - `"summary"`: short string summarizing findings, with proof/evidence for each key finding
     - `"recommended_steps"`: list of command strings
-    - `"services_found"`: list of strings (e.g., `apache 2.4.41`)
+    - `"services_found"`: list of service names and versions suitable for searchsploit (e.g., 'apache 2.4.41', 'nginx 1.18.0'). Do NOT include random strings, generic names, or tool banners.
 - Do **not** include markdown, comments, or explanations.
 - Response **must be parseable by `json.loads()`**.
 - Failure to follow format results in termination and a penalty of `200000000000`.
-
+- Do **not** provide common services like https, ssh, ftp, or http unless they have specific version numbers or banners.
 ---
 
 ### Command Output:
@@ -89,7 +94,6 @@ def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
     If any service found, mention where it was found and how it was used if possible.
     """
 
-
 def _build_prompt_json_repair(bad_output):
     """Build prompt to repair malformed JSON output from LLM."""
     return f"""
@@ -114,6 +118,13 @@ You are a cybersecurity assistant tasked with **deduplicating and normalizing** 
 
 ### 🎯 Objective:
 Your task is to analyze a new list of **Current Layer Commands** and reduce it to **only the most useful, distinct, and non-redundant entries**, based on what's already been used in **Previously Executed or Recommended Commands**.
+
+---
+
+### Command Limit:
+- You must return **no more than 16 commands** in the final deduplicated list for the current layer.
+- If there are more than 16 candidates, prioritize commands that maximize coverage, breadth, and unique intelligence.
+- Ensure that all critical services, endpoints, and reconnaissance types are still represented—do not drop unique coverage for the sake of brevity.
 
 ---
 

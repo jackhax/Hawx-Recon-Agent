@@ -15,7 +15,7 @@ WEBSITE=""
 
 function show_help() {
     echo ""
-    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hosts FILE] [--interactive] --host <ip|domain> | --website <url>"
+    echo "Usage: $0 [--force-build] [--steps N] [--ovpn FILE] [--hosts FILE] [--interactive] <ip|domain|url>"
     echo ""
     echo "Options:"
     echo "  --force-build   Rebuild the Docker image before execution."
@@ -28,12 +28,14 @@ function show_help() {
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"
-    echo "  $0 --host 10.10.11.58"
-    echo "  $0 --website https://example.com"
+    echo "  $0 10.10.11.58"
+    echo "  $0 example.com"
+    echo "  $0 https://example.com"
     exit 0
 }
 
-# === Parse flags ===
+# === Parse flags and positional target ===
+POSITIONAL=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --help)
@@ -83,45 +85,48 @@ while [[ $# -gt 0 ]]; do
             TEST_MODE=true
             shift
             ;;
-        --host)
-            if [[ -n "$HOST" || -n "$WEBSITE" ]]; then
-                echo "[!] Only one of --host or --website may be specified."
-                exit 1
-            fi
-            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
-                echo "[!] Missing value for --host"
-                exit 1
-            fi
-            HOST="$2"
-            shift 2
-            ;;
-        --website)
-            if [[ -n "$HOST" || -n "$WEBSITE" ]]; then
-                echo "[!] Only one of --host or --website may be specified."
-                exit 1
-            fi
-            if [[ -z "${2:-}" || "$2" =~ ^-- ]]; then
-                echo "[!] Missing value for --website"
-                exit 1
-            fi
-            WEBSITE="$2"
-            shift 2
-            ;;
         *)
-            echo "[!] Unknown or misplaced argument: $1"
-            exit 1
+            POSITIONAL+=("$1")
+            shift
             ;;
     esac
-    
+
 done
 
-# === Validate target ===
-if [[ -z "$HOST" && -z "$WEBSITE" ]]; then
-    echo "[!] You must specify either --host or --website."
+set -- "${POSITIONAL[@]}"
+
+if [[ $# -lt 1 ]]; then
+    echo "[!] You must specify a target (IP, domain, or website URL)."
     show_help
 fi
-if [[ -n "$HOST" && -n "$WEBSITE" ]]; then
-    echo "[!] Only one of --host or --website may be specified."
+TARGET="$1"
+
+# === Target validation ===
+# Check if it's a valid IPv4 or IPv6
+if [[ "$TARGET" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    # IPv4
+    VALID_TARGET=true
+    TARGET_MODE="host"
+elif [[ "$TARGET" =~ ^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$ ]]; then
+    # IPv6
+    VALID_TARGET=true
+    TARGET_MODE="host"
+elif [[ "$TARGET" =~ ^https?:// ]]; then
+    # Website URL
+    # Validate protocol and domain
+    if [[ "$TARGET" =~ ^https?://[^/]+ ]]; then
+        VALID_TARGET=true
+        TARGET_MODE="website"
+    else
+        echo "[!] Invalid website URL: $TARGET"
+        exit 1
+    fi
+elif [[ "$TARGET" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    # Domain
+    VALID_TARGET=true
+    TARGET_MODE="host"
+else
+    echo "[!] Invalid target: $TARGET"
     exit 1
 fi
 
@@ -193,11 +198,11 @@ DOCKER_CMD="docker run --rm -it \
 $DOCKER_NET_OPTS \
 -e STEPS=\"$STEPS\" \
 -e LLM_API_KEY=\"$LLM_API_KEY\""
-if [[ -n "$HOST" ]]; then
-    DOCKER_CMD+=" -e TARGET_HOST=\"$HOST\""
+if [[ "$TARGET_MODE" == "host" ]]; then
+    DOCKER_CMD+=" -e TARGET_HOST=\"$TARGET\""
 fi
-if [[ -n "$WEBSITE" ]]; then
-    DOCKER_CMD+=" -e TARGET_WEBSITE=\"$WEBSITE\""
+if [[ "$TARGET_MODE" == "website" ]]; then
+    DOCKER_CMD+=" -e TARGET_WEBSITE=\"$TARGET\""
 fi
 if [[ "$INTERACTIVE" == true ]]; then
     DOCKER_CMD+=" -e INTERACTIVE=true"
