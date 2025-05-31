@@ -148,20 +148,45 @@ ollama:
 ## Usage
 
 ```bash
-./hawx.sh [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive] <target_ip>
+./hawx.sh [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive] <target>
 ```
 
-### Examples:
-```bash
-./hawx.sh 192.168.1.10
-./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive 10.10.11.58
-```
+- `<target>` can be an IP address, domain, or website URL (must include http:// or https:// for websites).
+- The script will automatically detect if the target is a host (IP/domain) or a website.
+- Example:
+  ```bash
+  ./hawx.sh 10.10.11.58
+  ./hawx.sh dog.htb
+  ./hawx.sh https://example.com
+  ./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
+  ```
 
 > You can specify a hosts file like:
 > ```
 > 10.10.11.58 dog.htb
 > ```
 > The agent will resolve and use `dog.htb` instead of the raw IP wherever possible.
+
+---
+
+## LLM-Driven Workflow & Output Improvements
+
+- The agent tracks all previously executed commands and instructs the LLM not to repeat them (DRY principle).
+- The LLM is required to:
+  - Only recommend commands that print directly to the console (no silent downloads or file-only output).
+  - Include proof/evidence (e.g., IOC, banner, credential, etc.) for each key finding in summaries.
+  - Extract service names and versions in a format suitable for SearchSploit (e.g., `apache 2.4.41`), not random strings or tool banners.
+- The `summary.md` file now includes:
+  - Tool name
+  - Command executed
+  - LLM summary (with proof)
+  - Recommended next steps
+  - Services found (suitable for SearchSploit)
+
+## SearchSploit Integration
+
+- SearchSploit is only run for non-common services, or for common services (like http, ssh, etc.) **if and only if a version number is present**.
+- This reduces noise and focuses CVE lookups on actionable findings.
 
 ---
 
