@@ -11,11 +11,11 @@ ENV PATH="/usr/local/go/bin:$PATH"
 # Install system dependencies and Python 3.10 with required modules
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        openvpn nmap gobuster nikto ffuf whatweb dnsutils dnsrecon \
+        openvpn nmap gobuster nikto ffuf dnsutils dnsrecon \
         smtp-user-enum lftp ftp hydra onesixtyone snmp snmpd snmpcheck \
         smbclient enum4linux rpcbind nbtscan seclists curl wget git unzip \
         iproute2 net-tools traceroute exploitdb python3 python3-pip golang \
-        wpscan netcat-traditional && \
+        netcat-traditional && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Go

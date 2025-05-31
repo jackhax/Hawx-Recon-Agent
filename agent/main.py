@@ -28,19 +28,22 @@ def print_banner():
 
 
 def main():
-    # Ensure the script is called with at least the target machine IP
-    if len(sys.argv) < 2:
-        print("Usage: main.py <machine_ip> [steps] [interactive]")
+    # Ensure the script is called with at least the target and mode
+    if len(sys.argv) < 4:
+        print("Usage: main.py <target> <steps> <interactive> <target_mode>")
+        print("  <target>: IP/domain (for host) or full URL (for website)")
+        print("  <target_mode>: 'host' or 'website'")
         exit(1)
 
     # Load configuration from config.yaml and .env
     config = load_config()
-    machine_ip = sys.argv[1]  # Target machine IP address
+    target = sys.argv[1]  # Target machine IP or domain
     # Number of workflow steps/layers
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     interactive = (
         sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
     )  # Interactive mode flag
+    target_mode = sys.argv[4] if len(sys.argv) > 4 else "host"  # Target mode
 
     # Initialize the LLM client with config values
     llm_client = LLMClient(
@@ -52,7 +55,7 @@ def main():
     )
 
     # Create the workflow executor and start the recon workflow
-    executor = ReconExecutor(llm_client, machine_ip, interactive)
+    executor = ReconExecutor(llm_client, target, interactive, target_mode)
     executor.workflow(steps)
 
 

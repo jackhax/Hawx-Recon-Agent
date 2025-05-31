@@ -38,38 +38,38 @@ else
     echo "[*] Skipping VPN setup (no OVPN file provided)."
 fi
 
-# Probe target IP
-echo "[*] Probing target: $TARGET_IP"
-TCP_OK=false
-
-echo "[*] Running Nmap ping scan to validate host is up..."
-if nmap -sn "$TARGET_IP" | grep -q "Host is up"; then
-    echo "[+] Nmap confirms host is up"
-    TCP_OK=true
+# === Determine target type ===
+if [[ -n "${TARGET_HOST:-}" ]]; then
+    TARGET_MODE="host"
+    RESOLVED_TARGET="$TARGET_HOST"
+elif [[ -n "${TARGET_WEBSITE:-}" ]]; then
+    TARGET_MODE="website"
+    RESOLVED_TARGET="$TARGET_WEBSITE"
 else
-    echo "[!] Nmap could not confirm host is up"
-fi
-
-if [[ "$TCP_OK" == true ]]; then
-    echo "[+] ✅ VPN and target connectivity confirmed via TCP."
-else
-    echo "[!] ❌ No open ports reachable on $TARGET_IP. Box may be down or firewalled."
+    echo "[!] Must provide either TARGET_HOST or TARGET_WEBSITE."
     exit 1
 fi
-echo ""
 
-# === Determine domain from hosts file if available ===
-if [[ -n "${CUSTOM_HOSTS_FILE:-}" && -f "$CUSTOM_HOSTS_FILE" ]]; then
-    DOMAIN_NAME=$(awk "\$1 == \"$TARGET_IP\" {print \$2}" "$CUSTOM_HOSTS_FILE" | head -n1)
-    if [[ -n "$DOMAIN_NAME" ]]; then
-        echo "[*] Resolved domain from hosts file: $DOMAIN_NAME"
-        RESOLVED_TARGET="$DOMAIN_NAME"
+# Only probe host if in host mode
+if [[ "$TARGET_MODE" == "host" ]]; then
+    echo "[*] Probing target: $TARGET_HOST"
+    TCP_OK=false
+
+    echo "[*] Running Nmap ping scan to validate host is up..."
+    if nmap -sn "$TARGET_HOST" | grep -q "Host is up"; then
+        echo "[+] Nmap confirms host is up"
+        TCP_OK=true
     else
-        echo "[!] No matching domain for $TARGET_IP in CUSTOM_HOSTS_FILE. Using raw IP."
-        RESOLVED_TARGET="$TARGET_IP"
+        echo "[!] Nmap could not confirm host is up"
     fi
-else
-    RESOLVED_TARGET="$TARGET_IP"
+
+    if [[ "$TCP_OK" == true ]]; then
+        echo "[+] ✅ VPN and target connectivity confirmed via TCP."
+    else
+        echo "[!] ❌ No open ports reachable on $TARGET_HOST. Box may be down or firewalled."
+        exit 1
+    fi
+    echo ""
 fi
 
 # Cap STEPS at 3
@@ -103,5 +103,5 @@ if [[ "${TEST_MODE:-}" == "true" ]]; then
     exit $?
 fi
 
-# ✅ Call main.py with resolved target
-python3 /opt/agent/main.py "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG"
+# ✅ Call main.py with resolved target and mode
+python3 /opt/agent/main.py "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG" "$TARGET_MODE"
