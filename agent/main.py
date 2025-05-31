@@ -5,14 +5,18 @@ This script initializes the LLM client, loads configuration, and starts the reco
 for a given target machine IP. It is intended to be run inside the Docker container as the main process.
 """
 
-import sys
-from workflow.executor import ReconExecutor
-from llm_client import LLMClient
 from config import load_config
+from llm_client import LLMClient
+from workflow.executor import ReconExecutor
+import sys
+import os
+
+# Ensure the 'agent' package is importable when running main.py directly
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 
 def print_banner():
-    # Print the ASCII art banner for branding and user feedback
+    """Print the ASCII art banner for branding and user feedback."""
     print(
         r"""
 ██╗  ██╗ █████╗ ██╗    ██╗██╗  ██╗
@@ -28,12 +32,13 @@ def print_banner():
 
 
 def main():
+    """Main entry point for the Hawx Recon Agent."""
     # Ensure the script is called with at least the target and mode
     if len(sys.argv) < 4:
         print("Usage: main.py <target> <steps> <interactive> <target_mode>")
         print("  <target>: IP/domain (for host) or full URL (for website)")
         print("  <target_mode>: 'host' or 'website'")
-        exit(1)
+        sys.exit(1)
 
     # Load configuration from config.yaml and .env
     config = load_config()

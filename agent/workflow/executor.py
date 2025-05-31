@@ -5,11 +5,11 @@ Orchestrates the multi-layer reconnaissance workflow, manages command execution,
 service discovery, and report generation for a given target.
 """
 
+import sys
 import os
 from workflow.runner import run_layer
-from workflow.output import run_searchsploit
+from workflow.output import run_searchsploit, export_summary_to_pdf
 from records import Records
-from workflow.output import export_summary_to_pdf
 
 
 class ReconExecutor:
@@ -20,6 +20,7 @@ class ReconExecutor:
     """
 
     def __init__(self, llm_client, target, interactive=False, target_mode="host"):
+        """Initialize the ReconExecutor with LLM client, target, and mode."""
         # LLM client for prompt generation and summarization
         self.llm_client = llm_client
         # Target machine IP or hostname
@@ -29,10 +30,14 @@ class ReconExecutor:
         # Target mode ('host' or 'website')
         self.target_mode = target_mode
         if self.target_mode == "website":
-            if not (str(target).startswith("http://") or str(target).startswith("https://")):
+            if not (
+                str(target).startswith(
+                    "http://") or str(target).startswith("https://")
+            ):
                 print(
-                    "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)")
-                exit(1)
+                    "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)"
+                )
+                sys.exit(1)
         # Directory for storing recon data for this target
         self.base_dir = os.path.join(
             "/mnt/triage",
@@ -43,13 +48,14 @@ class ReconExecutor:
         self.records = Records()
 
     def _get_domain(self, url):
+        """Extract the domain from a URL."""
         import re
 
         m = re.match(r"https?://([^/]+)", url)
         return m.group(1) if m else url
 
     def add_commands(self, commands, layer):
-        # Store deduplicated commands for the given workflow layer
+        """Store deduplicated commands for the given workflow layer."""
         self.records.commands[layer] = commands
         deduped = self.llm_client.deduplicate_commands(
             self.records.commands, layer)
@@ -57,33 +63,37 @@ class ReconExecutor:
         self.records.commands[layer] = final
 
     def add_services(self, services):
-        # Add discovered services to the records
+        """Add discovered services to the records."""
         self.records.services.extend(services)
 
     def _interactive_tool_menu(self, tool_cmds):
+        """Interactive menu for selecting which web recon tools to run."""
         # This menu is only shown if --interactive flag is used
         print(
-            "\n[?] Select which web recon tools to run (space to toggle, enter to confirm):")
+            "\n[?] Select which web recon tools to run (space to toggle, enter to confirm):"
+        )
         selected = [True] * len(tool_cmds)
         tool_names = [cmd.split()[0] for cmd in tool_cmds]
         while True:
             for i, (tool, sel) in enumerate(zip(tool_names, selected)):
-                mark = '[x]' if sel else '[ ]'
+                mark = "[x]" if sel else "[ ]"
                 print(f"  {i+1}. {mark} {tool} : {tool_cmds[i]}")
             print(
-                "  (Type numbers separated by space to toggle, or press enter to continue)")
+                "  (Type numbers separated by space to toggle, or press enter to continue)"
+            )
             inp = input("  > ").strip()
             if not inp:
                 break
             for num in inp.split():
                 if num.isdigit():
-                    idx = int(num)-1
+                    idx = int(num) - 1
                     if 0 <= idx < len(selected):
                         selected[idx] = not selected[idx]
             print()
         return [cmd for cmd, sel in zip(tool_cmds, selected) if sel]
 
     def workflow(self, steps=1):
+        """Run the full recon workflow for the target."""
         if self.target_mode == "host":
             # Start with nmap
             nmap_cmds = [f"nmap -sC -sV -p- {self.target}"]
@@ -123,6 +133,7 @@ class ReconExecutor:
                             capture_output=True,
                             text=True,
                             timeout=10,
+                            check=False,
                         )
                         if "HTTP/" in resp.stdout:
                             proto = "https"
@@ -135,6 +146,7 @@ class ReconExecutor:
                             capture_output=True,
                             text=True,
                             timeout=10,
+                            check=False,
                         )
                         if "HTTP/" in resp.stdout:
                             proto = "http"
@@ -149,7 +161,7 @@ class ReconExecutor:
                         f"curl -I {web_url}",
                         # f"ffuf -u {web_url} -H 'Host: FUZZ' -w /usr/share/seclists/Discovery/DNS/namelist.txt -fs 0",
                         f"ffuf -u {web_url}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt",
-                        f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt"
+                        f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt",
                     ]
                     if self.interactive:
                         web_cmds = self._interactive_tool_menu(web_cmds)
@@ -162,7 +174,7 @@ class ReconExecutor:
                 f"curl -I {self.target}",
                 # f"ffuf -u {self.target} -H 'Host: FUZZ' -w /usr/share/seclists/Discovery/DNS/namelist.txt -fs 0",
                 f"ffuf -u {self.target}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/big.txt",
-                f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt"
+                f"dnsrecon -d {base_domain} -D /usr/share/seclists/Discovery/DNS/namelist.txt -t brt",
             ]
             if self.interactive:
                 web_cmds = self._interactive_tool_menu(web_cmds)

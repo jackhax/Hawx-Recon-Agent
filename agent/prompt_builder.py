@@ -1,5 +1,5 @@
 """
-Prompt builder utilities for Hawx Recon Agent.
+Prompt builder utilities for Hawx Recon.
 
 Provides functions to construct prompts for LLM-based summarization, command recommendation,
 JSON repair, deduplication, and executive summary generation.
@@ -7,6 +7,7 @@ JSON repair, deduplication, and executive summary generation.
 
 
 def _build_prompt_post_step(available_tools, command_str, command_output):
+    """Build prompt for post-step LLM summarization and recommendation."""
     return f"""
 You are a security assistant analyzing the output of the following command:
 
@@ -66,6 +67,7 @@ Your task is to:
 
 
 def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
+    """Build prompt for executive summary generation."""
     return f"""
     You are a security analyst. Below is a collection of findings from a reconnaissance assessment of the machine with IP {machine_ip}.
     Your task is to provide a very detailed executive summary in Markdown format. The summary should include:
@@ -89,6 +91,7 @@ def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
 
 
 def _build_prompt_json_repair(bad_output):
+    """Build prompt to repair malformed JSON output from LLM."""
     return f"""
     The following response from a security assistant LLM was meant to be a valid JSON object but was malformed or improperly formatted:
 
@@ -103,6 +106,7 @@ def _build_prompt_json_repair(bad_output):
 
 
 def _build_prompt_deduplication(current_layer, prior_layers):
+    """Build prompt for deduplication and normalization of commands."""
     return f"""
 You are a cybersecurity assistant tasked with **deduplicating and normalizing** a list of command-line reconnaissance commands.
 
@@ -172,6 +176,7 @@ Every command's result should be visible on screen — if a command saves output
 
 
 def _build_prompt_post_step_chunked(available_tools, command_str, chunk, prev_summary):
+    """Build prompt for chunked post-step LLM summarization."""
     return f"""
 You are a security assistant helping analyze the output of the command: {command_str}
 
@@ -233,6 +238,7 @@ You must return a valid JSON object with the following structure:
 
 
 def _build_prompt_exec_summary_chunked(machine_ip, chunk, prev_summary):
+    """Build prompt for chunked executive summary generation."""
     return f"""
 You are a cybersecurity analyst working on an executive summary for the recon of machine {machine_ip}.
 

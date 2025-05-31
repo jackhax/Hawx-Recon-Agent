@@ -18,7 +18,7 @@ import shlex
 
 
 def print_banner():
-    # Print the ASCII art banner for branding and user feedback
+    """Print the ASCII art banner for branding and user feedback."""
     print(
         r"""
 ██╗  ██╗ █████╗ ██╗    ██╗██╗  ██╗
@@ -42,14 +42,14 @@ ansi_escape = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 def clean_line(line):
-    # Remove ANSI escape codes
+    """Remove ANSI escape codes and non-printable/control characters except newline and tab."""
     line = ansi_escape.sub("", line)
-    # Remove non-printable/control characters except newline and tab
     line = "".join(c for c in line if c.isprintable() or c in "\n\t")
     return line
 
 
 def load_filter_patterns():
+    """Load and compile regex filter patterns from filter.yaml."""
     global _filter_patterns
     if _filter_patterns is not None:
         return _filter_patterns
@@ -61,7 +61,6 @@ def load_filter_patterns():
         return _filter_patterns
     with open(filter_path, "r", encoding="utf-8") as f:
         raw_patterns = yaml.safe_load(f) or {}
-    # Compile regex patterns for each tool
     _filter_patterns = {}
     for tool, patterns in raw_patterns.items():
         _filter_patterns[tool] = [re.compile(pat) for pat in patterns]
@@ -69,6 +68,7 @@ def load_filter_patterns():
 
 
 def should_filter_line(tool, line):
+    """Return True if the line should be filtered for the given tool."""
     patterns = load_filter_patterns().get(tool, [])
     for regex in patterns:
         if regex.search(line):
@@ -77,7 +77,7 @@ def should_filter_line(tool, line):
 
 
 def execute_command(command_parts, llm_client, base_dir, layer):
-    # Execute a single recon command and handle output, logging, and LLM summarization
+    """Execute a single recon command and handle output, logging, and LLM summarization."""
     tool = command_parts[0]
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
@@ -106,12 +106,10 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             last_line = ""
             for line in process.stdout:
                 if not should_filter_line(tool, line):
-                    # Clean line: remove ANSI codes and non-printable chars
                     ascii_line = clean_line(line)
                     out.write(ascii_line)
-                    out.flush()  # Ensure real-time log writing
+                    out.flush()
                     last_line = ascii_line.strip()
-                    # Print the last line of output in-place for user feedback
                     print(f"\r    {' '*(term_width-4)}", end="", flush=True)
                     print(
                         f"\r    {last_line[:term_width - 4]}", end="", flush=True)
@@ -126,8 +124,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             out.write("Process terminated due to 5-minute timeout\n")
         return []
 
-    except Exception:
-        # Handle other command execution errors
+    except Exception as exc:
+        print(f"[!] Command execution error: {exc}")
         return []
 
     duration = round(time.time() - start_time, 2)
@@ -156,8 +154,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         existing_meta.append(meta_entry)
         with open(metadata_file, "w", encoding="utf-8") as mf:
             json.dump(existing_meta, mf, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[!] Metadata logging error: {exc}")
 
     # === Markdown Summary ===
     summary_text = resp.get("summary", "")
@@ -184,8 +182,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             else:
                 sf.write("- None\n")
             sf.write("\n\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[!] Markdown summary error: {exc}")
 
     # === JSON Summary ===
     json_data_file = os.path.join(base_dir, "summary_data.json")
@@ -205,14 +203,14 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         existing_data.append(tool_data)
         with open(json_data_file, "w", encoding="utf-8") as jf:
             json.dump(existing_data, jf, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[!] JSON summary error: {exc}")
 
     return resp
 
 
 def run_searchsploit(services, base_dir):
-    # Run SearchSploit for each discovered service and append results to exploits.txt
+    """Run SearchSploit for each discovered service and append results to exploits.txt."""
     output_file = os.path.join(base_dir, "exploits.txt")
     with open(output_file, "a", encoding="utf-8") as f:
         for svc in services:
@@ -222,15 +220,16 @@ def run_searchsploit(services, base_dir):
                     capture_output=True,
                     text=True,
                     timeout=60,
+                    check=False,
                 )
                 f.write(f"### {svc} ###\n")
                 f.write(result.stdout + "\n")
-            except Exception as e:
-                f.write(f"Error running searchsploit for {svc}: {e}\n")
+            except Exception as exc:
+                f.write(f"Error running searchsploit for {svc}: {exc}\n")
 
 
 def export_summary_to_pdf(base_dir):
-    # Convert the executive summary markdown file to PDF using WeasyPrint
+    """Convert the executive summary markdown file to PDF using WeasyPrint."""
     md_path = os.path.join(base_dir, "summary_exec.md")
     pdf_path = os.path.join(base_dir, "summary_exec.pdf")
 
@@ -248,5 +247,5 @@ def export_summary_to_pdf(base_dir):
 
         HTML(string=html_content).write_pdf(pdf_path)
         print(f"[✓] PDF report generated: {pdf_path}")
-    except Exception as e:
-        print(f"[!] PDF export failed: {e}")
+    except Exception as exc:
+        print(f"[!] PDF export failed: {exc}")
