@@ -1,6 +1,10 @@
 # This file is used to filter the output of the tools
 # Add regex for each tool to exclude output matching the regex
-# ffuf:
-#   - ".*:: Progress:.*"
+ffuf:
+  - ".*:: Progress:.*"
 curl:
-  - ".*(?:\\d{1,2}|\\-{2}):(?:\\d{2}|\\-{2}):(?:\\d{2}|\\-{2})\\s+(?:\\d{1,2}|\\-{2}):(?:\\d{2}|\\-{2}):(?:\\d{2}|\\-{2})\\s+(?:\\d{1,2}|\\-{2}):(?:\\d{2}|\\-{2}):(?:\\d{2}|\\-{2}).*"
+  # Split long regex for readability (no logic change)
+  - >
+    .*(?:\d{1,2}|\-{2}):(?:\d{2}|\-{2}):(?:\d{2}|\-{2})\s+
+    (?:\d{1,2}|\-{2}):(?:\d{2}|\-{2}):(?:\d{2}|\-{2})\s+
+    (?:\d{1,2}|\-{2}):(?:\d{2}|\-{2}):(?:\d{2}|\-{2}).*

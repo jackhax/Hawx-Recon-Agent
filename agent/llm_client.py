@@ -55,16 +55,16 @@ class LLMClient:
 
     # ========== Utility Methods ==========
     def _chunk_text_by_tokens(self, text, max_tokens):
-        # Split text into chunks based on token count for LLM context limits
+        """Split text into chunks based on token count for LLM context limits."""
         tokens = re.findall(r"\w+|\S", text)
         chunks = []
         for i in range(0, len(tokens), max_tokens):
-            chunk = "".join(tokens[i : i + max_tokens])
+            chunk = "".join(tokens[i: i + max_tokens])
             chunks.append(chunk)
         return chunks
 
     def _sanitize_llm_output(self, output):
-        # Remove markdown/code block wrappers from LLM output
+        """Remove markdown/code block wrappers from LLM output."""
         output = output.strip()
         if output.startswith("```json"):
             output = output[7:]
@@ -75,14 +75,14 @@ class LLMClient:
         return output
 
     def _build_chat_payload(self, prompt):
-        # Build the payload for chat-based LLM APIs
+        """Build the payload for chat-based LLM APIs."""
         return {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
         }
 
     def _build_headers(self):
-        # Build HTTP headers for LLM API requests
+        """Build HTTP headers for LLM API requests."""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -97,7 +97,7 @@ class LLMClient:
     # ========== LLM Query Methods ==========
 
     def get_response(self, prompt):
-        # Query the configured LLM provider with the given prompt
+        """Query the configured LLM provider with the given prompt."""
         if self.provider in ("groq", "openai", "openrouter"):
             return self._query_openai(prompt)
         elif self.provider == "ollama":
@@ -106,7 +106,7 @@ class LLMClient:
             raise NotImplementedError(f"Unsupported provider: {self.provider}")
 
     def _query_openai(self, prompt):
-        # Send a prompt to the OpenAI-compatible API
+        """Send a prompt to the OpenAI-compatible API."""
         try:
             url = f"{self.base_url.rstrip('/')}/chat/completions"
             resp = requests.post(
@@ -118,11 +118,11 @@ class LLMClient:
             if resp.status_code == 429:
                 raise RuntimeError("Rate limit exceeded")
             return resp.json()["choices"][0]["message"]["content"]
-        except Exception as e:
-            raise RuntimeError(f"OpenAI request failed: {e}")
+        except Exception as exc:
+            raise RuntimeError(f"OpenAI request failed: {exc}")
 
     def _query_ollama(self, prompt):
-        # Send a prompt to the Ollama API
+        """Send a prompt to the Ollama API."""
         try:
             resp = requests.post(
                 f"{self.host.rstrip('/')}/api/generate",
@@ -130,28 +130,28 @@ class LLMClient:
             )
             resp.raise_for_status()
             return resp.json().get("response", "").strip()
-        except Exception as e:
-            raise RuntimeError(f"Ollama request failed: {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Ollama request failed: {exc}")
 
     # ========== Repair & Correction ==========
 
     def repair_llm_response(self, bad_output):
-        # Attempt to repair malformed LLM output by prompting the LLM to fix its own response
+        """Attempt to repair malformed LLM output by prompting the LLM to fix its own response."""
         prompt = prompt_builder._build_prompt_json_repair(bad_output)
         try:
             fixed = self.get_response(prompt)
             return json.loads(self._sanitize_llm_output(fixed))
-        except Exception as e:
-            print("[!] Failed to repair LLM output:", e)
+        except Exception as exc:
+            print("[!] Failed to repair LLM output:", exc)
             return None
 
     def post_step(self, command, command_output_file):
-        # Summarize and recommend next steps after running a command
+        """Summarize and recommend next steps after running a command."""
         command_str = " ".join(command)
 
         try:
-            with open(command_output_file, "r", encoding="utf-8") as file:
-                command_output = file.read()
+            with open(command_output_file, "r", encoding="utf-8") as f:
+                command_output = f.read()
         except FileNotFoundError:
             return f"Error: File not found at {command_output_file}"
 
@@ -176,12 +176,13 @@ class LLMClient:
 
         try:
             return json.loads(self._sanitize_llm_output(response))
-        except Exception:
+        except Exception as exc:
+            print("[!] LLM output parse error:", exc)
             # Attempt to repair if JSON parsing fails
             return self.repair_llm_response(response)
 
     def executive_summary(self, machine_ip):
-        # Generate a detailed executive summary for the recon session
+        """Generate a detailed executive summary for the recon session."""
         print("\n\033[94m[*] Preparing Executive Summary...\033[0m\n")
         base_dir = os.path.join("/mnt/triage", machine_ip)
         summary_file = os.path.join(base_dir, "summary.md")
@@ -209,7 +210,8 @@ class LLMClient:
             )
             response = self.get_response(prompt)
         else:
-            chunks = self._chunk_text_by_tokens(full_input, self.context_length - 1000)
+            chunks = self._chunk_text_by_tokens(
+                full_input, self.context_length - 1000)
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_exec_summary_chunked(
@@ -230,15 +232,17 @@ class LLMClient:
         return response
 
     def deduplicate_commands(self, commands, layer):
-        # Deduplicate commands for the current layer using LLM
-        current_layer = commands[layer]
-        prior_layers = commands[:layer]
-        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
-        response = self.get_response(prompt)
-        response = self._sanitize_llm_output(response)
-
+        """Deduplicate and normalize a list of command-line reconnaissance commands."""
+        if not commands or not isinstance(commands, list):
+            return {"deduplicated_commands": []}
+        current_layer = commands[layer] if layer < len(commands) else []
+        prior_layers = [cmd for i, layer_cmds in enumerate(
+            commands) if i != layer for cmd in layer_cmds]
+        prompt = prompt_builder._build_prompt_deduplication(
+            current_layer, prior_layers)
+        resp = self.get_response(prompt)
         try:
-            return json.loads(response)
-        except Exception:
-            # Attempt to repair if JSON parsing fails
-            return self.repair_llm_response(response)
+            return json.loads(self._sanitize_llm_output(resp))
+        except Exception as exc:
+            print("[!] Deduplication LLM output parse error:", exc)
+            return self.repair_llm_response(resp)
