@@ -117,6 +117,13 @@ Your task is to analyze a new list of **Current Layer Commands** and reduce it t
 
 ---
 
+### Command Limit:
+- You must return **no more than 16 commands** in the final deduplicated list for the current layer.
+- If there are more than 16 candidates, prioritize commands that maximize coverage, breadth, and unique intelligence.
+- Ensure that all critical services, endpoints, and reconnaissance types are still represented—do not drop unique coverage for the sake of brevity.
+
+---
+
 ### Inputs:
 - **Current Layer Commands:** {current_layer} \nBREAK
 - **Previously Executed or Recommended Commands:** {prior_layers} \nBREAK
