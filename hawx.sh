@@ -23,6 +23,8 @@ function show_help() {
     echo "  --ovpn FILE     Optional OpenVPN config file."
     echo "  --hosts FILE    Optional file whose contents are appended to /etc/hosts inside container."
     echo "  --interactive   Run in interactive LLM-assisted mode."
+    echo "  --host          Target IP or domain name (mutually exclusive with --website)."
+    echo "  --website       Target website URL (must include http:// or https://, mutually exclusive with --host)."
     echo "  --help          Show this help message and exit."
     echo ""
     echo "Example:"

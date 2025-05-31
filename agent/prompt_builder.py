@@ -5,7 +5,6 @@ Provides functions to construct prompts for LLM-based summarization, command rec
 JSON repair, deduplication, and executive summary generation.
 """
 
-
 def _build_prompt_post_step(available_tools, command_str, command_output, previous_commands=None):
     """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, and searchsploit service extraction enforcement."""
     previous_commands = previous_commands or []
@@ -94,7 +93,6 @@ def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
     Only return the plain text Markdown executive summary.
     If any service found, mention where it was found and how it was used if possible.
     """
-
 
 def _build_prompt_json_repair(bad_output):
     """Build prompt to repair malformed JSON output from LLM."""

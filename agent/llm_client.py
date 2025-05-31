@@ -145,6 +145,7 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", exc)
             return None
 
+
     def post_step(self, command, command_output_file, previous_commands=None):
         """Summarize and recommend next steps after running a command, considering previous commands."""
         command_str = " ".join(command)
