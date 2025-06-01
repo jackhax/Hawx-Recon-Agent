@@ -59,6 +59,21 @@ def build_image_if_needed(image_name, dockerfile=None, force=False):
             f"[*] Docker image '{image_name}' already exists. Skipping build.")
 
 
+def resolve_ip_from_hosts_file(ip, hosts_file):
+    """Attempt to resolve an IP address to a hostname using a hosts file."""
+    if not os.path.exists(hosts_file):
+        return None
+
+    with open(hosts_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                parts = line.split()
+                if len(parts) >= 2 and parts[0] == ip:
+                    return parts[1]  # Return the first hostname for this IP
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Hawx Recon Agent CLI",
@@ -90,7 +105,15 @@ Examples:
 
     # --- Target validation ---
     target = args.target
-    if is_valid_ipv4(target) or is_valid_ipv6(target):
+    if is_valid_ipv4(target):
+        target_mode = "host"
+        # If hosts file is provided, try to resolve the IP to a hostname
+        if args.hosts:
+            hostname = resolve_ip_from_hosts_file(target, args.hosts)
+            if hostname:
+                print(f"[*] Resolved {target} to {hostname} from hosts file")
+                target = hostname
+    elif is_valid_ipv6(target):
         target_mode = "host"
     elif is_valid_url(target):
         target_mode = "website"

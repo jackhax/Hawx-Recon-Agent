@@ -50,31 +50,42 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python and Go
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip golang \
+    python3 python3-pip \
     --fix-missing \
     && rm -rf /var/lib/apt/lists/*
 
 # Install necessary heavy Python packages
-RUN pip3 install --break-system-packages numpy sentence-transformers
+RUN pip3 install --break-system-packages --no-cache-dir numpy sentence-transformers
 
 # Set working directory
 WORKDIR /opt/agent
 
-# Only copy requirements to isolate pip cache
+# Copy and install core requirements
 COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt
 
-#Use BuildKit cache mount
-RUN pip3 install --break-system-packages -r /tmp/requirements.txt
+# Copy and install runtime requirements
+COPY requirements_runtime.txt /tmp/requirements_runtime.txt
+RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements_runtime.txt
 
-# Step 3: Now copy other files
-COPY setup.py /tmp/
-COPY configs/tools.yaml /tmp/
-RUN python3 /tmp/setup.py
+# Copy and run apt and custom install scripts
+COPY apt_install.sh /tmp/apt_install.sh
+RUN bash /tmp/apt_install.sh
+
+RUN pip3 install --no-cache-dir --break-system-packages golang
+ENV PATH="/root/go/bin:${PATH}"
+
+COPY custom_install.sh /tmp/custom_install.sh
+RUN bash /tmp/custom_install.sh
 
 # Copy configuration files and agent code
 COPY configs/filter.yaml /opt/agent/filter.yaml
 COPY configs/config.yaml /opt/agent/config.yaml
-COPY agent/ /opt/agent/
+COPY configs/tools.yaml /opt/agent/tools.yaml
+COPY agent/* /opt/agent/
+COPY agent/llm /opt/agent/llm/
+COPY agent/utils /opt/agent/utils/
+COPY agent/workflow /opt/agent/workflow/
 COPY tests/ /opt/agent/tests/
 
 # Copy entrypoint and make executable

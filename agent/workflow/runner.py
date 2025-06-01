@@ -7,7 +7,7 @@ and collects recommended next steps and discovered services.
 
 import shlex
 import readline
-from workflow.output import execute_command
+from .output import execute_command
 
 
 def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=False):

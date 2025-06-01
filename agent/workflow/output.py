@@ -15,7 +15,7 @@ import shutil
 import yaml
 import re
 import shlex
-from agent.utils.vector_db import VectorDB
+from ..utils.vector_db import VectorDB
 
 
 def print_banner():
@@ -134,7 +134,9 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             last_line = ""
             last_update = time.time()
             # seconds of inactivity
-            timeout = int(os.environ.get("TIMEOUT", "180"))
+            timeout = int(os.environ.get("TIMEOUT", "300")
+                          ) if layer != -1 else None
+
             from select import select
             while True:
                 rlist, _, _ = select([process.stdout], [], [], 1)
@@ -156,7 +158,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                             f"    {last_line[:term_width - 4]}", end="", flush=True)
                 else:
                     # No output, just check inactivity timeout (no print)
-                    if time_since_update > timeout:
+                    if timeout and time_since_update > timeout:
                         process.terminate()
                         out.write(
                             f"\nProcess terminated due to {timeout}s inactivity timeout\n")

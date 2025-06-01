@@ -7,16 +7,14 @@ for a given target machine IP. It is intended to be run inside the Docker contai
 
 from agent.utils.config import load_config
 from agent.llm.llm_client import LLMClient
-from workflow.executor import ReconExecutor
+from agent.workflow.executor import ReconExecutor
 import sys
 import os
-
-# Ensure the 'agent' package is importable when running main.py directly
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 
 def print_banner():
     """Print the ASCII art banner for branding and user feedback."""
+    os.system("clear" if os.name == "posix" else "cls")  # Clears terminal
     print(
         r"""
 ██╗  ██╗ █████╗ ██╗    ██╗██╗  ██╗

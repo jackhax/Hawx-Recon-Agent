@@ -99,6 +99,7 @@ class LLMClient:
     def get_response(self, prompt):
         """Query the configured LLM provider with the given prompt."""
         if self.provider in ("groq", "openai", "openrouter"):
+            print(prompt, "\n")
             return self._query_openai(prompt)
         elif self.provider == "ollama":
             return self._query_ollama(prompt)

@@ -97,7 +97,8 @@ clear
 # Run unit tests if TEST_MODE is enabled
 if [[ "${TEST_MODE:-}" == "true" ]]; then
     echo "=== 🧪 Running tests in container ==="
-    export PYTHONPATH=/opt/agent  # This points to the directory containing records.py etc.
+    cd /opt
+    export PYTHONPATH=/opt
     echo "PYTHONPATH set to: $PYTHONPATH"
     cd /mnt/tests || exit 1
     pytest -s --disable-warnings -q
@@ -105,5 +106,6 @@ if [[ "${TEST_MODE:-}" == "true" ]]; then
 fi
 
 # ✅ Call main.py with resolved target and mode
-export PYTHONPATH=/opt/agent
+cd /opt
+export PYTHONPATH=/opt
 python3 -m agent.main "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG" "$TARGET_MODE"

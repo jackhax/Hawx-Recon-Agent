@@ -7,9 +7,9 @@ service discovery, and report generation for a given target.
 
 import sys
 import os
-from workflow.runner import run_layer
-from workflow.output import run_searchsploit, export_summary_to_pdf
-from agent.utils.records import Records
+from .runner import run_layer
+from .output import run_searchsploit, export_summary_to_pdf
+from ..utils.records import Records
 
 
 class ReconExecutor:
@@ -96,7 +96,7 @@ class ReconExecutor:
         """Run the full recon workflow for the target."""
         if self.target_mode == "host":
             # Start with nmap
-            nmap_cmds = [f"nmap -sC -sV -p- -v {self.target}"]
+            nmap_cmds = [f"nmap -sC -sV -p- {self.target}"]
             recommended = run_layer(
                 nmap_cmds,
                 -1,

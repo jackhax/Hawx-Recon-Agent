@@ -1,4 +1,4 @@
-custom_hosts/
+custom_hosts
 .env
 tmp/
 nmap_reports/
@@ -12,6 +12,9 @@ venv/
 *.ruff_cache
 *.cache
 .buildx-cache
+requirements_runtime.txt
+apt_install.sh
+custom_install.sh
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,python,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,python,visualstudiocode

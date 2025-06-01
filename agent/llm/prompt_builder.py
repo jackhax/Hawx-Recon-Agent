@@ -114,79 +114,57 @@ def _build_prompt_json_repair(bad_output):
 
 
 def _build_prompt_deduplication(current_layer, prior_layers):
-    """Build prompt for deduplication and normalization of commands."""
     return f"""
-You are a cybersecurity assistant tasked with **deduplicating and normalizing** a list of command-line reconnaissance commands.
+You are an LLM assistant optimizing reconnaissance workflows.
 
 ---
 
 ### 🎯 Objective:
-Your task is to analyze a new list of **Current Layer Commands** and reduce it to **only the most useful, distinct, and non-redundant entries**, based on what's already been used in **Previously Executed or Recommended Commands**.
+From the list of **Current Layer Commands**, return only the most **informative, distinct, and useful commands** that have **not already been functionally covered** by any commands in **Prior Layers**.
 
 ---
 
-### Command Limit:
-- You must return **no more than 32 commands** in the final deduplicated list for the current layer.
-- If there are more than 32 candidates, prioritize commands that maximize coverage, breadth, and unique intelligence.
-- Ensure that all critical services, endpoints, and reconnaissance types are still represented—do not drop unique coverage for the sake of brevity.
+### 🧠 Deduplication Strategy:
+
+1. **Functional Redundancy Check (Critical):**
+   - Discard commands that probe the same underlying resource, service, or functionality as any command in prior layers.
+   - Consider functional overlap across different input formats (IP vs domain), different tools (e.g., scanner A vs B), or minor flag variations.
+   - Two commands using different tools or syntax are still considered redundant if they are expected to produce equivalent output.
+
+2. **Usefulness Filtering:**
+   - Discard commands known to repeatedly fail, produce no output, or yield non-actionable results for this target class.
+   - Discard commands that over-enumerate (e.g., repeating exhaustive scans over hosts already thoroughly probed).
+   - Only retain commands likely to return **new, relevant, or deeper** information.
+
+3. **Value Contribution:**
+   - Each retained command must provide **new intelligence** not covered earlier — such as targeting new protocols, new services, new sub-resources, or more advanced discovery methods.
+   - Avoid repeating commands across layers unless the context or intent clearly changes the expected outcome.
 
 ---
 
 ### Inputs:
-- **Current Layer Commands:** {current_layer} \nBREAK
-- **Previously Executed or Recommended Commands:** {prior_layers} \nBREAK
+- **Current Layer Commands:**  
+{current_layer}  
+\nBREAK
+- **Prior Layer Commands:**  
+{prior_layers}  
+\nBREAK
 
 ---
 
-### 🔍 Key Responsibilities:
+### ✅ Output Format:
+Return a **valid JSON** object as follows:
 
-1. **Functional Deduplication (Critical):**  
-   Remove any command from the current layer that performs the same function as a command in the prior layers — even if it uses a different tool, syntax, or flags.  
-   - Deduplicate based on **function and target scope**, not tool name.
-   - If two or more commands perform **the same action on the same target** (e.g., port scan, web content discovery, file retrieval), retain only the most informative one.
-   - Avoid keeping multiple commands that **differ only by tool or minor flags**, unless they provide **significantly different coverage or output**.
-
-2. **Command Normalization and Trimming:**
-   - Remove redundant variants of the same tool (e.g., `-v`, `-vv`, or output format flags like `-oN`, `-oG`).
-   - Discard commands with narrower scope if a broader, more comprehensive command already exists.
-   - Eliminate multiple commands targeting the same service (e.g., `ftp`, `dns`, `http`) unless they provide clearly different coverage.
-
-3. **No Repeated Scans per Layer Type:**
-   Avoid performing the same type of scan in every layer (e.g., repeating basic `nmap` TCP scans). Retain only novel or deeper scans.
-
-4. **Uniqueness and Contribution:**
-   Each command in the final list must contribute new intelligence or coverage. If it does not add value beyond what prior layers already covered, exclude it.
-
-5. **Preserve Commands That Provide New Intelligence:**  
-   Retain any command that targets a **new service, file, endpoint, port, or path** not previously covered.  
-   - This includes unique probes like `curl`, `wget`, `git`, or any tool accessing a new URL, IP, Endpoint, path or resource.
-   - A command must only be removed if **its entire functionality and target** are already completely covered by a previous command.
-
----
-
-### 🗂 Wordlist Constraint:
-For tools requiring wordlists, **use only from the following absolute paths**:
-- `/usr/share/seclists/Discovery/Web-Content/big.txt`
-- `/usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt`
-- `/usr/share/seclists/Discovery/DNS/namelist.txt`
-- `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
-- `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
-
-Do **not** make up any other wordlist names or paths.  
-Every command's result should be visible on screen — if a command saves output to a file, it must include a `cat` or equivalent follow-up to display it.
-
----
-
-### ✅ Output Format (Strict):
 {{
   "deduplicated_commands": ["<command_1>", "<command_2>", "..."]
 }}
 
-⚠️ **Rules**:
-- Do **not** include any markdown, triple backticks, or comments.
-- Do **not** include any explanatory text — just raw, valid JSON.
-- The output **must be directly parsable** by `json.loads()`.
-- Any malformed commands (e.g., `curlhttp127.0.0.1`) or incorrect paths result in termination and a penalty of `200000000000`.
+⚠️ Constraints:
+- Return only raw JSON — no markdown, explanation, or comments.
+- Ensure output is strictly valid for `json.loads()` with no surrounding text.
+- Limit to **a maximum of 32 commands**.
+- Any command writing to a file must include a `&& cat <file>` suffix to show results
+- Do not include commands that show no stdout output
 """
 
 
