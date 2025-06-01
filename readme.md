@@ -14,7 +14,8 @@
 - 🌐 Optional OpenVPN integration
 - 🧠 Markdown summaries of recon
 - 📂 Clean directory structure per target
-- 🧹 Output filtering via filter.yaml (custom regex-based noise reduction)
+- 🧹 Output filtering via `configs/filter.yaml` (custom regex-based noise reduction)
+- 🧠 Modular codebase: `agent/llm/` (LLM logic), `agent/utils/` (utilities), `configs/` (YAML configs)
 - 🌐 Hosts file injection for domain-based targeting
 
 ---
@@ -86,9 +87,9 @@
 
 ## Output Filtering with filter.yaml
 
-You can reduce noise in tool outputs by specifying regex patterns in a `filter.yaml` file at the project root. For each supported tool (e.g., ffuf, gobuster, nikto), add a list of regex patterns to filter out unwanted lines before logs and summaries are generated.
+You can reduce noise in tool outputs by specifying regex patterns in `configs/filter.yaml`. For each supported tool (e.g., ffuf, gobuster, nikto), add a list of regex patterns to filter out unwanted lines before logs and summaries are generated.
 
-**Example filter.yaml:**
+**Example `configs/filter.yaml`:**
 ```yaml
 ffuf:
   - .*:: Progress:      # Filters all ffuf progress lines
@@ -129,10 +130,10 @@ Create a `.env` file in the root of the repo:
 ```env
 LLM_API_KEY=your_llm_api_key_here
 ```
-> Only the API key is read from `.env`. All other config is in `config.yaml`
+> Only the API key is read from `.env`. All other config is in `configs/config.yaml`
 
-### 3. Create `config.yaml`
-Create a `config.yaml` in the root directory (or mountable from outside):
+### 3. Create `configs/config.yaml`
+Create a `configs/config.yaml` in the configs directory (or mountable from outside):
 ```yaml
 llm:
   provider: groq           # or openai, ollama
@@ -159,6 +160,7 @@ ollama:
   ./hawx.sh dog.htb
   ./hawx.sh https://example.com
   ./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
+  ./hawx.sh --timeout 300 --test 10.10.11.58
   ```
 
 > You can specify a hosts file like:
@@ -192,14 +194,26 @@ ollama:
 
 ## Flags
 
-| Flag            | Description                                                  |
-|-----------------|--------------------------------------------------------------|
-| `--steps`       | Number of recon layers (default: 1, max: 3)                  |
-| `--ovpn`        | OpenVPN config file                                          |
-| `--hosts`       | File to append to `/etc/hosts` inside container              |
-| `--force-build` | Rebuild Docker image before execution                        |
-| `--interactive` | Ask user's confirmation before executing recommended commands|
-| `--help`        | Show usage help                                              |
+| Flag            | Description                                                                 |
+|-----------------|-----------------------------------------------------------------------------|
+| `--steps`       | Number of recon layers (default: 1, max: 3)                                 |
+| `--ovpn`        | OpenVPN config file                                                         |
+| `--hosts`       | File to append to `/etc/hosts` inside container                             |
+| `--force-build` | Rebuild Docker image before execution                                       |
+| `--interactive` | Ask user's confirmation before executing recommended commands (interactive)  |
+| `--test`        | Run in test mode (mounts tests/ into container)                             |
+| `--timeout`     | Timeout for each command in seconds (default: 180)                          |
+| `--help`        | Show usage help                                                             |
+
+- The positional argument `<target>` is required and can be an IP address, domain, or website URL (must include http:// or https:// for websites).
+- Example usage:
+  ```bash
+  ./hawx.sh 10.10.11.58
+  ./hawx.sh dog.htb
+  ./hawx.sh https://example.com
+  ./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
+  ./hawx.sh --timeout 300 --test 10.10.11.58
+  ```
 
 ---
 

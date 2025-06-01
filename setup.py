@@ -10,7 +10,7 @@ import subprocess
 import yaml
 
 
-def load_config(path="/tmp/tools.yaml"):
+def load_config(path=os.path.join('/tmp/', 'tools.yaml')):
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -27,7 +27,8 @@ def install_apt_tools(packages):
     if not packages:
         return
     run_command(["apt-get", "update"])
-    run_command(["apt-get", "install", "-y", "--no-install-recommends", *packages])
+    run_command(["apt-get", "install", "-y",
+                "--no-install-recommends", *packages])
     run_command(["apt-get", "clean"])
 
 

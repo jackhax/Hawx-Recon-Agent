@@ -1,4 +1,6 @@
 #!/bin/bash
+# DEPRECATED: Use hawx.py instead of this script.
+# This script is no longer maintained and will be removed in a future release.
 
 set -euo pipefail
 
@@ -183,6 +185,15 @@ if [[ -n "$HOSTS_FILE" ]]; then
     REL_HOSTS_FILE="${ABS_HOSTS_FILE#$(pwd)/}"
     DOCKER_NET_OPTS+=" -v \"$(pwd)/$REL_HOSTS_FILE\":/mnt/custom_hosts"
     DOCKER_OVPN_ENV+=" -e CUSTOM_HOSTS_FILE=\"/mnt/custom_hosts\""
+fi
+
+# === Build base image if needed ===
+BASE_IMAGE_NAME="hawx-recon-base:latest"
+if [[ "$(docker images -q "$BASE_IMAGE_NAME" 2>/dev/null)" == "" ]]; then
+    echo "[*] Base image '$BASE_IMAGE_NAME' not found. Building base image..."
+    docker build --platform=linux/amd64 -f Dockerfile.base -t "$BASE_IMAGE_NAME" .
+else
+    echo "[*] Base image '$BASE_IMAGE_NAME' already exists. Skipping base build."
 fi
 
 # === Build Docker image if needed ===

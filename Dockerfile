@@ -1,52 +1,81 @@
+# Dockerfile.base
 FROM kalilinux/kali-rolling
 
 LABEL maintainer="jackhax <adnanjackady@gmail.com>"
 LABEL version="1.0"
-LABEL description="Recon Agent for automated offensive security assessments"
+LABEL description="Recon Agent base image with all tools pre-installed"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV GO_VERSION=1.24.0
 ENV PATH="/usr/local/go/bin:$PATH"
 
-# Install system dependencies and Python 3.10 with required modules
+# Use a reliable Kali mirror and force IPv4 for apt
+RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/sources.list && \
+    echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
+# Install core utilities (layered, max 5 per RUN)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        openvpn nmap gobuster nikto ffuf dnsutils dnsrecon \
-        smtp-user-enum lftp ftp hydra onesixtyone snmp snmpd snmpcheck \
-        smbclient enum4linux rpcbind nbtscan seclists curl wget git unzip \
-        iproute2 net-tools traceroute exploitdb python3 python3-pip golang \
-        netcat-traditional && \
+    apt-get install -y --no-install-recommends curl wget git unzip --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends iproute2 net-tools traceroute --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential pkg-config --fix-missing && \
     rm -rf /var/lib/apt/lists/*
 
+# Install recon and pentest tools (layered, max 5 per RUN, each with apt-get update)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openvpn nmap gobuster nikto ffuf --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dnsutils dnsrecon smtp-user-enum lftp ftp --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends hydra onesixtyone snmp snmpd snmpcheck --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends smbclient enum4linux rpcbind nbtscan seclists --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends exploitdb netcat-traditional --fix-missing && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install network libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpcap-dev \
     libpcap0.8 \
-    build-essential \
-    pkg-config \
+    --fix-missing \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Go
-RUN curl -OL https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
-    rm go${GO_VERSION}.linux-amd64.tar.gz
+# Install Python and Go
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip golang \
+    --fix-missing \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/root/go/bin:${PATH}"
+# Install necessary heavy Python packages
+RUN pip3 install --break-system-packages numpy sentence-transformers
 
 # Set working directory
 WORKDIR /opt/agent
 
-# Install Python dependencies and run setup
-COPY requirements.txt setup.py tools.yaml /tmp/
-RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/requirements.txt pytest && \
-    rm /tmp/requirements.txt && \
-    python3 /tmp/setup.py
+# Only copy requirements to isolate pip cache
+COPY requirements.txt /tmp/requirements.txt
 
-# Copy agent code and configs
+#Use BuildKit cache mount
+RUN pip3 install --break-system-packages -r /tmp/requirements.txt
+
+# Step 3: Now copy other files
+COPY setup.py /tmp/
+COPY configs/tools.yaml /tmp/
+RUN python3 /tmp/setup.py
+
+# Copy configuration files and agent code
+COPY configs/filter.yaml /opt/agent/filter.yaml
+COPY configs/config.yaml /opt/agent/config.yaml
 COPY agent/ /opt/agent/
 COPY tests/ /opt/agent/tests/
-COPY tools.yaml /opt/agent/
-COPY filter.yaml /opt/agent/
-COPY config.yaml /opt/agent/config.yaml
 
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh

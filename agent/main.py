@@ -5,8 +5,8 @@ This script initializes the LLM client, loads configuration, and starts the reco
 for a given target machine IP. It is intended to be run inside the Docker container as the main process.
 """
 
-from config import load_config
-from llm_client import LLMClient
+from agent.utils.config import load_config
+from agent.llm.llm_client import LLMClient
 from workflow.executor import ReconExecutor
 import sys
 import os

@@ -15,6 +15,7 @@ import shutil
 import yaml
 import re
 import shlex
+from agent.utils.vector_db import VectorDB
 
 
 def print_banner():
@@ -49,7 +50,7 @@ def clean_line(line):
 
 
 def load_filter_patterns():
-    """Load and compile regex filter patterns from filter.yaml."""
+    """Load and compile regex filter patterns from configs/filter.yaml."""
     global _filter_patterns
     if _filter_patterns is not None:
         return _filter_patterns
@@ -76,11 +77,25 @@ def should_filter_line(tool, line):
     return False
 
 
+def filter_log_for_llm(tool, log_text):
+    """Filter log lines for a given tool using filter.yaml patterns (for LLM input only)."""
+    patterns = load_filter_patterns().get(tool, [])
+    filtered_lines = []
+    for line in log_text.splitlines():
+        if not any(regex.search(line) for regex in patterns):
+            filtered_lines.append(line)
+    return "\n".join(filtered_lines)
+
+
 def execute_command(command_parts, llm_client, base_dir, layer):
     """Execute a single recon command and handle output, logging, and LLM summarization."""
     tool = command_parts[0]
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
+
+    # === Vector DB setup ===
+    vectordb_path = os.path.join(base_dir, "vector_db.json")
+    vectordb = VectorDB(vectordb_path)
 
     timestamp = datetime.utcnow().isoformat()
     output_file = os.path.join(
@@ -118,7 +133,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
             last_line = ""
             last_update = time.time()
-            timeout = 60  # seconds of inactivity
+            # seconds of inactivity
+            timeout = int(os.environ.get("TIMEOUT", "180"))
             from select import select
             while True:
                 rlist, _, _ = select([process.stdout], [], [], 1)
@@ -143,9 +159,9 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                     if time_since_update > timeout:
                         process.terminate()
                         out.write(
-                            "\nProcess terminated due to 60s inactivity timeout\n")
+                            f"\nProcess terminated due to {timeout}s inactivity timeout\n")
                         print(
-                            "\n[!] Process terminated due to 60s inactivity timeout")
+                            f"\n[!] Process terminated due to {timeout}s inactivity timeout")
                         return []
                 if process.poll() is not None:
                     break
@@ -171,8 +187,19 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
     duration = round(time.time() - start_time, 2)
     # Summarize command output and recommend next steps using LLM
+    # Instead of filtering at log time, filter here for LLM input only
+    with open(output_file, "r", encoding="utf-8") as f:
+        raw_log = f.read()
+    filtered_log = filter_log_for_llm(tool, raw_log)
+
+    # === Retrieve similar commands/summaries for LLM context ===
+    similar = vectordb.search_similar(" ".join(command_parts), top_k=3)
+    similar_context = "\n\n".join([
+        f"Command: {e['command']}\nSummary: {e['summary']}" for e in similar
+    ]) if similar else None
+
     resp = llm_client.post_step(
-        command_parts, output_file, previous_commands=previous_commands)
+        command_parts, None, previous_commands=previous_commands, command_output_override=filtered_log, similar_context=similar_context)
     if not isinstance(resp, dict):
         return []
 
@@ -249,6 +276,9 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             json.dump(existing_data, jf, indent=2)
     except Exception as exc:
         print(f"[!] JSON summary error: {exc}")
+
+    # === Store in vector DB after summarization ===
+    vectordb.add(" ".join(command_parts), summary_text)
 
     return resp
 

@@ -9,8 +9,8 @@ import json
 import os
 import re
 import requests
-from records import Records
-import prompt_builder
+from agent.utils.records import Records
+from agent.llm import prompt_builder
 
 
 class LLMClient:
@@ -145,23 +145,25 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", exc)
             return None
 
-
-    def post_step(self, command, command_output_file, previous_commands=None):
-        """Summarize and recommend next steps after running a command, considering previous commands."""
+    def post_step(self, command, command_output_file, previous_commands=None, command_output_override=None, similar_context=None):
+        """Summarize and recommend next steps after running a command, considering previous commands and similar context."""
         command_str = " ".join(command)
         previous_commands = previous_commands or []
 
-        try:
-            with open(command_output_file, "r", encoding="utf-8") as f:
-                command_output = f.read()
-        except FileNotFoundError:
-            return f"Error: File not found at {command_output_file}"
+        if command_output_override is not None:
+            command_output = command_output_override
+        else:
+            try:
+                with open(command_output_file, "r", encoding="utf-8") as f:
+                    command_output = f.read()
+            except FileNotFoundError:
+                return f"Error: File not found at {command_output_file}"
 
         tokens = re.findall(r"\w+|\S", command_output)
         # Use chunked prompt if output is too large for LLM context
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_post_step(
-                self.available_tools, command_str, command_output, previous_commands
+                self.available_tools, command_str, command_output, previous_commands, similar_context
             )
             response = self.get_response(prompt)
         else:

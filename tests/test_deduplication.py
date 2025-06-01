@@ -1,7 +1,7 @@
 import os
 import pytest
-from config import load_config
-from llm_client import LLMClient
+from agent.utils.config import load_config
+from agent.llm.llm_client import LLMClient
 
 
 @pytest.mark.parametrize(

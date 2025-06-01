@@ -67,7 +67,8 @@ if [[ "$TARGET_MODE" == "host" ]]; then
         echo "[+] ✅ VPN and target connectivity confirmed via TCP."
     else
         echo "[!] ❌ No open ports reachable on $TARGET_HOST. Box may be down or firewalled."
-        exit 1
+        echo "[!] Failing safe: exiting with code 0."
+        exit 0
     fi
     echo ""
 fi
@@ -104,4 +105,5 @@ if [[ "${TEST_MODE:-}" == "true" ]]; then
 fi
 
 # ✅ Call main.py with resolved target and mode
-python3 /opt/agent/main.py "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG" "$TARGET_MODE"
+export PYTHONPATH=/opt/agent
+python3 -m agent.main "$RESOLVED_TARGET" "$STEPS" "$INTERACTIVE_FLAG" "$TARGET_MODE"

@@ -9,7 +9,7 @@ import sys
 import os
 from workflow.runner import run_layer
 from workflow.output import run_searchsploit, export_summary_to_pdf
-from records import Records
+from agent.utils.records import Records
 
 
 class ReconExecutor:
@@ -96,7 +96,7 @@ class ReconExecutor:
         """Run the full recon workflow for the target."""
         if self.target_mode == "host":
             # Start with nmap
-            nmap_cmds = [f"nmap -sC -sV -p- {self.target}"]
+            nmap_cmds = [f"nmap -sC -sV -p- -v {self.target}"]
             recommended = run_layer(
                 nmap_cmds,
                 -1,
@@ -159,9 +159,7 @@ class ReconExecutor:
                     web_cmds = [
                         f"whatweb {web_url}",
                         f"subfinder -d {base_domain}",
-                        f"subfinder -d {base_domain} -silent | naabu -p 80,443,22,21,25 -silent",
-                        f"subfinder -d {base_domain} -silent | dnsx -a -resp-only -silent",
-                        f"subfinder -d {base_domain} -silent | httpx -silent",
+                        f"gau {web_url} | unfurl domains | sort -u",
                     ]
                     if self.interactive:
                         web_cmds = self._interactive_tool_menu(web_cmds)
@@ -172,9 +170,7 @@ class ReconExecutor:
             web_cmds = [
                 f"whatweb {self.target}",
                 f"subfinder -d {base_domain}",
-                f"subfinder -d {base_domain} -silent | naabu -p 80,443,22,21,25 -silent",
-                f"subfinder -d {base_domain} -silent | dnsx -a -resp-only -silent",
-                f"subfinder -d {base_domain} -silent | httpx -silent",
+                f"gau {self.target} | unfurl domains | sort -u"
             ]
             if self.interactive:
                 web_cmds = self._interactive_tool_menu(web_cmds)

@@ -5,14 +5,17 @@ Provides functions to construct prompts for LLM-based summarization, command rec
 JSON repair, deduplication, and executive summary generation.
 """
 
-def _build_prompt_post_step(available_tools, command_str, command_output, previous_commands=None):
-    """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, and searchsploit service extraction enforcement."""
+
+def _build_prompt_post_step(available_tools, command_str, command_output, previous_commands=None, similar_context=None):
+    """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, searchsploit service extraction, and similar context."""
     previous_commands = previous_commands or []
     previous_commands_str = "\n".join(previous_commands)
+    similar_context_str = f"\n\n# Similar Previous Commands and Summaries (for context):\n{similar_context}" if similar_context else ""
     return f"""
 You are a security assistant analyzing the output of the following command:
 
 {command_str}
+{similar_context_str}
 
 Your task is to:
 
@@ -94,6 +97,7 @@ def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
     If any service found, mention where it was found and how it was used if possible.
     """
 
+
 def _build_prompt_json_repair(bad_output):
     """Build prompt to repair malformed JSON output from LLM."""
     return f"""
@@ -122,8 +126,8 @@ Your task is to analyze a new list of **Current Layer Commands** and reduce it t
 ---
 
 ### Command Limit:
-- You must return **no more than 16 commands** in the final deduplicated list for the current layer.
-- If there are more than 16 candidates, prioritize commands that maximize coverage, breadth, and unique intelligence.
+- You must return **no more than 32 commands** in the final deduplicated list for the current layer.
+- If there are more than 32 candidates, prioritize commands that maximize coverage, breadth, and unique intelligence.
 - Ensure that all critical services, endpoints, and reconnaissance types are still represented—do not drop unique coverage for the sake of brevity.
 
 ---

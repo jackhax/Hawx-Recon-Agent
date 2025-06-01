@@ -43,3 +43,4 @@ custom:
   subfinder: go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
   dnsx: go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest
   naabu: go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
+  gau: go install -v github.com/lc/gau/v2/cmd/gau@latest
