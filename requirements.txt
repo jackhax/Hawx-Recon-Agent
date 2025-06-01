@@ -6,3 +6,4 @@ weasyprint
 PyYAML
 dotenv
 pytest
+numpy

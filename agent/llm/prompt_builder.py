@@ -13,73 +13,82 @@ def _build_prompt_post_step(
     previous_commands=None,
     similar_context=None,
 ):
-    """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, searchsploit service extraction, and similar context."""
     previous_commands = previous_commands or []
     previous_commands_str = "\n".join(previous_commands)
     similar_context_str = (
-        f"\n\n# Similar Previous Commands and Summaries (for context):\n{similar_context}"
+        f"\n\n# Similar Previous Commands and Summaries:\n{similar_context}"
         if similar_context
         else ""
     )
     return f"""
-You are a security assistant analyzing the output of the following command:
+You are a cybersecurity assistant analyzing the result of the following recon command:
 
 {command_str}
 {similar_context_str}
 
-Your task is to:
+---
 
-1. Provide a **detailed, accurate summary** of all findings — including visible services, endpoints, versions, banners, and any unusual behavior or hints toward vulnerabilities.
-2. **Include proof or evidence for each key finding in the summary.** This could be an IOC (Indicator of Compromise), a concrete value, a banner, a file path, a subdomain, a hash, a credential, or any other direct indicator from the command output. The summary should not just state what was found, but also show a snippet or value from the output as proof.
-3. Recommend a list of **next actionable commands** that further reconnaissance, vulnerability discovery, or exploitation — strictly based on this output.
-4. **Extract and output service names and versions in a format suitable for use with searchsploit.** Do NOT output random strings, generic names, or tool banners. Only output real software/service names (e.g., 'apache 2.4.41', 'nginx 1.18.0', 'phpmyadmin 5.1.0', 'vsftpd 3.0.3'). If no valid service is found, leave the list empty.
+### 🎯 Tasks:
+
+1. **Summarize the output**: Provide a concise, accurate summary of the findings — include services, endpoints, versions, banners, subdomains, exposed files, misconfigs, or anything notable.
+2. **Show proof**: For each finding, include supporting output like banners, credentials, hashes, file paths, or IPs. Do not make vague statements without quoting evidence from the output.
+3. **Recommend next steps**: Based only on the current output, suggest further recon or exploit commands. Each must yield meaningful new output.
+4. **Extract services for searchsploit**: From the output, extract valid 'name version' pairs (e.g., 'apache 2.4.41', 'phpmyadmin 5.1.0'). Generic terms or tool banners must be excluded.
 
 ---
 
-### Constraints & Guidelines:
+### 🔒 Constraints:
 
-- The summary must be a **plain string**, not a list.
-- `recommended_steps` must be a **list of executable commands**, each string a valid shell command.
+- The summary must be a plain string.
+- `recommended_steps` must be a list of valid shell commands.
 - Use only from these tools: {str(available_tools)}.
-- Do **not** suggest brute-force attacks.
-- Do **not** hallucinate or fabricate flags or tool features.
-- Do **not** suggest commands unless directly supported by current findings.
-- If **multiple tools probe the same service differently**, recommend all **if each yields new insights** (e.g., `dirb` and `ffuf` can coexist).
-- Prefer **breadth and depth over tool uniqueness** — retain diverse tools **unless exact redundancy is confirmed**.
-- All commands must **print useful output directly to the console**. Do **not** recommend commands that only download files, save output to files, or require manual file inspection. If a command saves output to a file, it must include a follow-up command (like `cat` or `grep`) to print the result to the console.
-- Do **not** recommend commands like `wget`, `curl -O`, or `git clone` unless the output is printed to the console.
-- Do not suggest another `nmap` scan unless it covers **full TCP port + service/version detection** (`-sC -sV -p-`).
-- If a tool requires a wordlist, use only from:
-    - `/usr/share/seclists/Discovery/Web-Content/big.txt`
-    - `/usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt`
-    - `/usr/share/seclists/Discovery/DNS/namelist.txt`
-    - `/usr/share/seclists/Usernames/top-usernames-shortlist.txt`
-    - `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt`
-- **Do not suggest any command that has already been executed.** Here is a list of previously executed commands (do not repeat any of these):
+- Do not suggest:
+  - Any previously executed command:
 {previous_commands_str}
+  - Commands that clone, download, or save output without displaying it.
+  - Another nmap scan unless it uses `-sC -sV -p-`.
+  - Brute-force attacks or password spraying.
+  - Tools or flags not clearly applicable to the findings.
+
+- All commands must print output to the terminal.
+  - If a command writes to a file (e.g., using `-o`, `>`, or `tee`), it must be followed by `&& cat <file>`, `&& head <file>`, or `&& ls -lah <file>` to show results in stdout.
+  - If a command performs a background task or has no output, omit it.
+
+- If a tool requires a wordlist, it must come from:
+    - /usr/share/seclists/Discovery/Web-Content/big.txt
+    - /usr/share/seclists/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt
+    - /usr/share/seclists/Discovery/DNS/namelist.txt
+    - /usr/share/seclists/Usernames/top-usernames-shortlist.txt
+    - /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt
+
 ---
 
-### Critical Logic:
+### 🧠 Intelligence Rules:
 
-- Do **not remove** any command that contributes **unique coverage or intelligence** — even if it's similar in purpose.
-- Treat **targeted probes** (like `.git`, `robots.txt`, `config.zip`, `/server-status`, etc.) as **high-signal** unless already fully retrieved.
-- **Never drop commands that scan new paths, test specific endpoints, or involve targeted enumeration**.
+- Do not recommend commands that offer no additional insight beyond previous output.
+- Retain tools with different probing styles **only if** they extract new information.
+- Always keep commands that probe new paths, subdomains, or resources.
+- Treat `.git`, `robots.txt`, `config.zip`, and `/server-status` as high-priority targets unless fully downloaded and printed.
 
 ---
 
-### Output Requirements:
+### 📤 Output Format (strict):
 
-- Respond with a single, valid JSON object. Must include:
-    - `"summary"`: short string summarizing findings, with proof/evidence for each key finding
-    - `"recommended_steps"`: list of command strings
-    - `"services_found"`: list of service names and versions suitable for searchsploit (e.g., 'apache 2.4.41', 'nginx 1.18.0'). Do NOT include random strings, generic names, or tool banners.
-- Do **not** include markdown, comments, or explanations.
-- Response **must be parseable by `json.loads()`**.
-- Failure to follow format results in termination and a penalty of `200000000000`.
-- Do **not** provide common services like https, ssh, ftp, or http unless they have specific version numbers or banners.
+Respond with this **raw JSON object** only:
+
+{{
+        "summary": "<string>",
+  "recommended_steps": ["<command1>", "<command2>", "..."],
+  "services_found": ["apache 2.4.41", "phpmyadmin 5.1.0"]
+}}
+
+- Do not include markdown, code blocks, or triple backticks.
+- Output must be directly parseable by `json.loads()`.
+- Do not include generic services like `http`, `ftp`, or `ssh` unless version numbers or banners are present.
+
 ---
 
-### Command Output:
+### 📦 Command Output:
 {command_output}
 """
 
@@ -91,11 +100,18 @@ def _build_prompt_exec_summary(machine_ip, summary_content, exploits_content):
     Your task is to provide a very detailed executive summary in Markdown format. The summary should include:
 
     - A clear summary of key findings.
+        - Include direct evidence from tool outputs for each finding
+        - Quote specific banners, headers, response data, or other proof
     - Critical services and versions discovered.
+        - Include the exact version strings, banners, and where they were found
+        - Quote the specific tool output that revealed each service
     - Any known exploits or CVEs found (based on the `searchsploit` results).
+        - Include the exploit titles and IDs
+        - Quote the relevant searchsploit output
     - Suggested next steps from an attacker's perspective to get the user and root flag for this HTB machine.
         - Do not suggest repeated steps
-    - Anything else you see fit to include
+        - Base suggestions on concrete evidence from the reconnaissance
+    - Support all findings with relevant evidence and quotes from the tool outputs
 
     ### Tool Summaries:
     {summary_content}

@@ -59,7 +59,7 @@ class LLMClient:
         tokens = re.findall(r"\w+|\S", text)
         chunks = []
         for i in range(0, len(tokens), max_tokens):
-            chunk = "".join(tokens[i : i + max_tokens])
+            chunk = "".join(tokens[i: i + max_tokens])
             chunks.append(chunk)
         return chunks
 
@@ -99,7 +99,6 @@ class LLMClient:
     def get_response(self, prompt):
         """Query the configured LLM provider with the given prompt."""
         if self.provider in ("groq", "openai", "openrouter"):
-            print(prompt, "\n")
             return self._query_openai(prompt)
         elif self.provider == "ollama":
             return self._query_ollama(prompt)
@@ -225,7 +224,8 @@ class LLMClient:
             )
             response = self.get_response(prompt)
         else:
-            chunks = self._chunk_text_by_tokens(full_input, self.context_length - 1000)
+            chunks = self._chunk_text_by_tokens(
+                full_input, self.context_length - 1000)
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_exec_summary_chunked(
@@ -256,7 +256,8 @@ class LLMClient:
             if i != layer
             for cmd in layer_cmds
         ]
-        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
+        prompt = prompt_builder._build_prompt_deduplication(
+            current_layer, prior_layers)
         resp = self.get_response(prompt)
         try:
             return json.loads(self._sanitize_llm_output(resp))

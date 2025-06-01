@@ -89,6 +89,7 @@ def filter_log_for_llm(tool, log_text):
 
 def execute_command(command_parts, llm_client, base_dir, layer):
     """Execute a single recon command and handle output, logging, and LLM summarization."""
+    # Get the first part before any shell operator as the tool name
     tool = command_parts[0]
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
@@ -98,7 +99,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     vectordb = VectorDB(vectordb_path)
 
     timestamp = datetime.utcnow().isoformat()
-    output_file = os.path.join(base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
+    output_file = os.path.join(
+        base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
     # Collect all previously executed commands for DRY logic
@@ -122,23 +124,49 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                 f"# Command: {' '.join(shlex.quote(part) for part in command_parts)}\n\n"
             )
 
-            process = subprocess.Popen(
-                command_parts,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                stdin=subprocess.DEVNULL,
-                text=True,
-            )
+            # Check if command contains shell operators and execute accordingly
+            use_shell = any(op in ' '.join(command_parts)
+                            for op in ['&&', '||', '|', ';', '>', '<'])
+
+            if use_shell:
+                # If shell operators are present, join command parts and run with shell=True
+                cmd = ' '.join(command_parts)
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    text=True,
+                    shell=True
+                )
+            else:
+                # Otherwise run as array of args without shell
+                process = subprocess.Popen(
+                    command_parts,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    text=True
+                )
 
             last_line = ""
             last_update = time.time()
-            # seconds of inactivity
-            timeout = int(os.environ.get("TIMEOUT", "300")) if layer != -1 else None
+            # Get inactivity timeout from environment (seconds)
+            try:
+                timeout = int(os.environ.get("TIMEOUT", "180"))
+            except ValueError:
+                timeout = 180
+
+            # For layer -1 (initial scan), use 5x timeout
+            if layer == -1:
+                timeout = timeout * 5
 
             from select import select
 
             while True:
-                rlist, _, _ = select([process.stdout], [], [], 1)
+                # Wait up to 1 second for output
+                rlist, _, _ = select([process.stdout], [], [], 1.0)
+                # Check time since last output
                 time_since_update = time.time() - last_update
                 if rlist:
                     line = process.stdout.readline()
@@ -151,21 +179,30 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                         last_line = ascii_line.strip()
                         last_update = time.time()
                         # Clear the line before printing new output
-                        print(f"\r{' ' * (term_width-1)}\r", end="", flush=True)
-                        print(f"    {last_line[:term_width - 4]}", end="", flush=True)
+                        print(f"\r{' ' * (term_width-1)}\r",
+                              end="", flush=True)
+                        print(
+                            f"    {last_line[:term_width - 4]}", end="", flush=True)
                 else:
-                    # No output, just check inactivity timeout (no print)
+                    # No output in this iteration, check inactivity timeout
                     if timeout and time_since_update > timeout:
+                        print(
+                            f"\n[!] No output for {timeout} seconds, terminating process..."
+                        )
                         process.terminate()
+                        try:
+                            # Give it 5 seconds to terminate gracefully
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()  # Force kill if it doesn't terminate
                         out.write(
                             f"\nProcess terminated due to {timeout}s inactivity timeout\n"
                         )
-                        print(
-                            f"\n[!] Process terminated due to {timeout}s inactivity timeout"
-                        )
                         return []
+
                 if process.poll() is not None:
                     break
+
             print()  # newline after command completes
             # Wait for process to exit if not already
             try:

@@ -11,9 +11,9 @@ import numpy as np
 try:
     from sentence_transformers import SentenceTransformer
 
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    MODEL = SentenceTransformer("all-MiniLM-L6-v2")
 except ImportError:
-    model = None
+    MODEL = None
 
 
 class VectorDB:
@@ -26,8 +26,8 @@ class VectorDB:
 
     def add(self, command, summary):
         entry = {"command": command, "summary": summary}
-        if model:
-            entry["embedding"] = model.encode(command + " " + summary).tolist()
+        if MODEL:
+            entry["embedding"] = MODEL.encode(command + " " + summary).tolist()
         self.data.append(entry)
         with open(self.db_path, "w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2)
@@ -35,8 +35,8 @@ class VectorDB:
     def search_similar(self, query, top_k=3):
         if not self.data:
             return []
-        if model:
-            q_emb = model.encode(query)
+        if MODEL:
+            q_emb = MODEL.encode(query)
             sims = [
                 np.dot(q_emb, np.array(e.get("embedding", np.zeros_like(q_emb))))
                 for e in self.data
