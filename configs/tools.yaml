@@ -1,7 +1,7 @@
 apt:
   - openvpn
   - nmap
-  - ffuf
+  - feroxbuster
   - nikto
   - whatweb
   - dnsutils

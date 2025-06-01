@@ -4,6 +4,68 @@ import os
 import re
 import subprocess
 import sys
+import yaml
+import filecmp
+
+
+def generate_dependency_files():
+    """Generate dependency files from tools.yaml"""
+    tools_yaml_path = os.path.join("configs", "tools.yaml")
+    if not os.path.exists(tools_yaml_path):
+        print("[!] tools.yaml not found in configs directory")
+        return
+
+    # Read tools.yaml
+    with open(tools_yaml_path, 'r') as f:
+        tools_config = yaml.safe_load(f)
+
+    # Get apt packages directly from the apt key
+    apt_packages = tools_config.get('apt', [])
+
+    # Get pip requirements directly from the pip key
+    pip_requirements = tools_config.get('pip', [])
+
+    # Get custom installation commands from the custom key
+    custom_installs = []
+    for tool, command in tools_config.get('custom', {}).items():
+        custom_installs.append(f"# Installing {tool}")
+        custom_installs.append(command)
+        custom_installs.append("")  # Add empty line for readability
+
+    # Write requirements_runtime.txt.tmp
+    with open('requirements_runtime.txt.tmp', 'w') as f:
+        f.write('\n'.join(sorted(pip_requirements)) +
+                '\n' if pip_requirements else '')
+
+    # Write apt_install.sh.tmp
+    with open('apt_install.sh.tmp', 'w') as f:
+        f.write('#!/bin/bash\n\n')
+        f.write('apt-get update && apt-get install -y --fix-missing \\\n')
+        f.write('    ' + ' \\\n    '.join(sorted(apt_packages)) +
+                '\n' if apt_packages else '')
+
+    # Write custom_install.sh.tmp
+    with open('custom_install.sh.tmp', 'w') as f:
+        f.write('#!/bin/bash\n\n')
+        if custom_installs:
+            f.write('\n'.join(custom_installs).strip() + '\n')
+
+    # Compare and replace files if different
+    files_to_check = [
+        ('requirements_runtime.txt.tmp', 'requirements_runtime.txt'),
+        ('apt_install.sh.tmp', 'apt_install.sh'),
+        ('custom_install.sh.tmp', 'custom_install.sh')
+    ]
+
+    for tmp_file, target_file in files_to_check:
+        if not os.path.exists(target_file) or not filecmp.cmp(tmp_file, target_file, shallow=False):
+            os.replace(tmp_file, target_file)
+            os.chmod(target_file, 0o755)  # Make scripts executable
+            print(f"[*] Updated {target_file}")
+        else:
+            os.remove(tmp_file)
+            print(f"[*] No changes needed for {target_file}")
+
 
 # --- Constants ---
 IMAGE_NAME = "hawx-agent"
@@ -52,7 +114,8 @@ def build_image_if_needed(image_name, dockerfile=None, force=False):
         cmd.append(".")
         subprocess.check_call(cmd)
     else:
-        print(f"[*] Docker image '{image_name}' already exists. Skipping build.")
+        print(
+            f"[*] Docker image '{image_name}' already exists. Skipping build.")
 
 
 def resolve_ip_from_hosts_file(ip, hosts_file):
@@ -92,11 +155,12 @@ Examples:
     parser.add_argument(
         "--steps",
         type=int,
-        default=1,
-        choices=range(1, 4),
-        help="Number of layers of commands to execute (default: 1, max: 3).",
+        default=3,
+        choices=range(1, 6),
+        help="Number of layers of commands to execute (default: 3, max: 5).",
     )
-    parser.add_argument("--ovpn", metavar="FILE", help="Optional OpenVPN config file.")
+    parser.add_argument("--ovpn", metavar="FILE",
+                        help="Optional OpenVPN config file.")
     parser.add_argument(
         "--hosts",
         metavar="FILE",
@@ -107,7 +171,8 @@ Examples:
         action="store_true",
         help="Run in interactive LLM-assisted mode.",
     )
-    parser.add_argument("--test", action="store_true", help="Run in test mode.")
+    parser.add_argument("--test", action="store_true",
+                        help="Run in test mode.")
     parser.add_argument(
         "--timeout",
         type=int,
@@ -175,8 +240,12 @@ Examples:
             sys.exit(1)
         abs_hosts = os.path.abspath(args.hosts)
         rel_hosts = os.path.relpath(abs_hosts, os.getcwd())
-        docker_net_opts += ["-v", f"{os.getcwd()}/{rel_hosts}:/mnt/custom_hosts"]
+        docker_net_opts += ["-v",
+                            f"{os.getcwd()}/{rel_hosts}:/mnt/custom_hosts"]
         docker_ovpn_env += ["-e", "CUSTOM_HOSTS_FILE=/mnt/custom_hosts"]
+
+    # --- Generate dependency files ---
+    generate_dependency_files()
 
     # --- Build main image if needed ---
     build_image_if_needed(IMAGE_NAME, force=args.force_build)

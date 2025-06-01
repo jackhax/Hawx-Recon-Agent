@@ -42,7 +42,7 @@ def main():
     config = load_config()
     target = sys.argv[1]  # Target machine IP or domain
     # Number of workflow steps/layers
-    steps = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    steps = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     interactive = (
         sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
     )  # Interactive mode flag

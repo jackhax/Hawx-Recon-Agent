@@ -31,7 +31,8 @@ class ReconExecutor:
         self.target_mode = target_mode
         if self.target_mode == "website":
             if not (
-                str(target).startswith("http://") or str(target).startswith("https://")
+                str(target).startswith(
+                    "http://") or str(target).startswith("https://")
             ):
                 print(
                     "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)"
@@ -56,7 +57,8 @@ class ReconExecutor:
     def add_commands(self, commands, layer):
         """Store deduplicated commands for the given workflow layer."""
         self.records.commands[layer] = commands
-        deduped = self.llm_client.deduplicate_commands(self.records.commands, layer)
+        deduped = self.llm_client.deduplicate_commands(
+            self.records.commands, layer)
         final = deduped.get("deduplicated_commands", commands)
         self.records.commands[layer] = final
 
@@ -90,7 +92,7 @@ class ReconExecutor:
             print()
         return [cmd for cmd, sel in zip(tool_cmds, selected) if sel]
 
-    def workflow(self, steps=1):
+    def workflow(self, steps=3):
         """Run the full recon workflow for the target."""
         if self.target_mode == "host":
             # Start with nmap
@@ -107,7 +109,8 @@ class ReconExecutor:
 
             # Check if nmap found port 80 or 443, then probe protocol
             nmap_log_dir = os.path.join(self.base_dir, "logs")
-            nmap_logs = [f for f in os.listdir(nmap_log_dir) if f.startswith("nmap_")]
+            nmap_logs = [f for f in os.listdir(
+                nmap_log_dir) if f.startswith("nmap_")]
             found_http = False
             found_https = False
             for log in nmap_logs:
@@ -156,7 +159,6 @@ class ReconExecutor:
                     web_cmds = [
                         f"whatweb {web_url}",
                         f"subfinder -d {base_domain}",
-                        f"gau {web_url} | unfurl domains | sort -u",
                     ]
                     if self.interactive:
                         web_cmds = self._interactive_tool_menu(web_cmds)
@@ -166,8 +168,7 @@ class ReconExecutor:
             base_domain = self._get_domain(self.target)
             web_cmds = [
                 f"whatweb {self.target}",
-                f"subfinder -d {base_domain}",
-                f"gau {self.target} | unfurl domains | sort -u",
+                f"subfinder -d {base_domain}"
             ]
             if self.interactive:
                 web_cmds = self._interactive_tool_menu(web_cmds)
