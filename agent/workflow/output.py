@@ -98,8 +98,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     vectordb = VectorDB(vectordb_path)
 
     timestamp = datetime.utcnow().isoformat()
-    output_file = os.path.join(
-        base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
+    output_file = os.path.join(base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
     # Collect all previously executed commands for DRY logic
@@ -134,10 +133,10 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             last_line = ""
             last_update = time.time()
             # seconds of inactivity
-            timeout = int(os.environ.get("TIMEOUT", "300")
-                          ) if layer != -1 else None
+            timeout = int(os.environ.get("TIMEOUT", "300")) if layer != -1 else None
 
             from select import select
+
             while True:
                 rlist, _, _ = select([process.stdout], [], [], 1)
                 time_since_update = time.time() - last_update
@@ -152,18 +151,18 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                         last_line = ascii_line.strip()
                         last_update = time.time()
                         # Clear the line before printing new output
-                        print(f"\r{' ' * (term_width-1)}\r",
-                              end="", flush=True)
-                        print(
-                            f"    {last_line[:term_width - 4]}", end="", flush=True)
+                        print(f"\r{' ' * (term_width-1)}\r", end="", flush=True)
+                        print(f"    {last_line[:term_width - 4]}", end="", flush=True)
                 else:
                     # No output, just check inactivity timeout (no print)
                     if timeout and time_since_update > timeout:
                         process.terminate()
                         out.write(
-                            f"\nProcess terminated due to {timeout}s inactivity timeout\n")
+                            f"\nProcess terminated due to {timeout}s inactivity timeout\n"
+                        )
                         print(
-                            f"\n[!] Process terminated due to {timeout}s inactivity timeout")
+                            f"\n[!] Process terminated due to {timeout}s inactivity timeout"
+                        )
                         return []
                 if process.poll() is not None:
                     break
@@ -196,12 +195,21 @@ def execute_command(command_parts, llm_client, base_dir, layer):
 
     # === Retrieve similar commands/summaries for LLM context ===
     similar = vectordb.search_similar(" ".join(command_parts), top_k=3)
-    similar_context = "\n\n".join([
-        f"Command: {e['command']}\nSummary: {e['summary']}" for e in similar
-    ]) if similar else None
+    similar_context = (
+        "\n\n".join(
+            [f"Command: {e['command']}\nSummary: {e['summary']}" for e in similar]
+        )
+        if similar
+        else None
+    )
 
     resp = llm_client.post_step(
-        command_parts, None, previous_commands=previous_commands, command_output_override=filtered_log, similar_context=similar_context)
+        command_parts,
+        None,
+        previous_commands=previous_commands,
+        command_output_override=filtered_log,
+        similar_context=similar_context,
+    )
     if not isinstance(resp, dict):
         return []
 
@@ -239,7 +247,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
         with open(summary_file, "a", encoding="utf-8") as sf:
             sf.write(f"## {tool}\n\n")
             sf.write(
-                f"**Command Executed:**\n\n    {' '.join(shlex.quote(part) for part in command_parts)}\n\n")
+                f"**Command Executed:**\n\n    {' '.join(shlex.quote(part) for part in command_parts)}\n\n"
+            )
             sf.write("**Summary**\n\n")
             sf.write(summary_text + "\n\n")
 
@@ -289,7 +298,33 @@ def run_searchsploit(services, base_dir):
     """Run SearchSploit for each discovered service and append results to exploits.txt, skipping common services unless they have a version number."""
     output_file = os.path.join(base_dir, "exploits.txt")
     COMMON_SERVICES = {
-        "http", "https", "ssh", "ftp", "smtp", "dns", "smb", "pop3", "imap", "ntp", "rdp", "mysql", "mssql", "postgres", "oracle", "telnet", "ldap", "snmp", "rpc", "nfs", "kerberos", "dhcp", "vnc", "cups", "printer", "rsync", "netbios"
+        "http",
+        "https",
+        "ssh",
+        "ftp",
+        "smtp",
+        "dns",
+        "smb",
+        "pop3",
+        "imap",
+        "ntp",
+        "rdp",
+        "mysql",
+        "mssql",
+        "postgres",
+        "oracle",
+        "telnet",
+        "ldap",
+        "snmp",
+        "rpc",
+        "nfs",
+        "kerberos",
+        "dhcp",
+        "vnc",
+        "cups",
+        "printer",
+        "rsync",
+        "netbios",
     }
     with open(output_file, "a", encoding="utf-8") as f:
         for svc in services:
@@ -298,7 +333,13 @@ def run_searchsploit(services, base_dir):
             if any(common in svc_lower for common in COMMON_SERVICES):
                 # Check for a version number (e.g., 'http 2.4.41' or 'ssh 7.9p1')
                 import re
-                if not re.search(r"\\b(?:" + "|".join(COMMON_SERVICES) + ")\\b\\s*[0-9]+[.0-9a-zA-Z_-]*", svc_lower):
+
+                if not re.search(
+                    r"\\b(?:"
+                    + "|".join(COMMON_SERVICES)
+                    + ")\\b\\s*[0-9]+[.0-9a-zA-Z_-]*",
+                    svc_lower,
+                ):
                     continue  # Skip if no version number
             try:
                 result = subprocess.run(

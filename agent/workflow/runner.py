@@ -31,9 +31,11 @@ def run_layer(commands, layer_index, llm_client, base_dir, records, interactive=
                     cmd = None
                     break
                 elif user_input.lower() == "m":
+
                     def prefill_hook():
                         readline.insert_text(cmd)
                         readline.redisplay()
+
                     readline.set_pre_input_hook(prefill_hook)
                     try:
                         new_cmd = input("    Modify command: ").strip()

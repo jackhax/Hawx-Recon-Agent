@@ -6,11 +6,21 @@ JSON repair, deduplication, and executive summary generation.
 """
 
 
-def _build_prompt_post_step(available_tools, command_str, command_output, previous_commands=None, similar_context=None):
+def _build_prompt_post_step(
+    available_tools,
+    command_str,
+    command_output,
+    previous_commands=None,
+    similar_context=None,
+):
     """Build prompt for post-step LLM summarization and recommendation, with DRY logic, proof, searchsploit service extraction, and similar context."""
     previous_commands = previous_commands or []
     previous_commands_str = "\n".join(previous_commands)
-    similar_context_str = f"\n\n# Similar Previous Commands and Summaries (for context):\n{similar_context}" if similar_context else ""
+    similar_context_str = (
+        f"\n\n# Similar Previous Commands and Summaries (for context):\n{similar_context}"
+        if similar_context
+        else ""
+    )
     return f"""
 You are a security assistant analyzing the output of the following command:
 

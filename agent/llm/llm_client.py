@@ -59,7 +59,7 @@ class LLMClient:
         tokens = re.findall(r"\w+|\S", text)
         chunks = []
         for i in range(0, len(tokens), max_tokens):
-            chunk = "".join(tokens[i: i + max_tokens])
+            chunk = "".join(tokens[i : i + max_tokens])
             chunks.append(chunk)
         return chunks
 
@@ -146,7 +146,14 @@ class LLMClient:
             print("[!] Failed to repair LLM output:", exc)
             return None
 
-    def post_step(self, command, command_output_file, previous_commands=None, command_output_override=None, similar_context=None):
+    def post_step(
+        self,
+        command,
+        command_output_file,
+        previous_commands=None,
+        command_output_override=None,
+        similar_context=None,
+    ):
         """Summarize and recommend next steps after running a command, considering previous commands and similar context."""
         command_str = " ".join(command)
         previous_commands = previous_commands or []
@@ -164,7 +171,11 @@ class LLMClient:
         # Use chunked prompt if output is too large for LLM context
         if len(tokens) < self.context_length - 1000:
             prompt = prompt_builder._build_prompt_post_step(
-                self.available_tools, command_str, command_output, previous_commands, similar_context
+                self.available_tools,
+                command_str,
+                command_output,
+                previous_commands,
+                similar_context,
             )
             response = self.get_response(prompt)
         else:
@@ -214,8 +225,7 @@ class LLMClient:
             )
             response = self.get_response(prompt)
         else:
-            chunks = self._chunk_text_by_tokens(
-                full_input, self.context_length - 1000)
+            chunks = self._chunk_text_by_tokens(full_input, self.context_length - 1000)
             summary_so_far = ""
             for chunk in chunks:
                 prompt = prompt_builder._build_prompt_exec_summary_chunked(
@@ -240,10 +250,13 @@ class LLMClient:
         if not commands or not isinstance(commands, list):
             return {"deduplicated_commands": []}
         current_layer = commands[layer] if layer < len(commands) else []
-        prior_layers = [cmd for i, layer_cmds in enumerate(
-            commands) if i != layer for cmd in layer_cmds]
-        prompt = prompt_builder._build_prompt_deduplication(
-            current_layer, prior_layers)
+        prior_layers = [
+            cmd
+            for i, layer_cmds in enumerate(commands)
+            if i != layer
+            for cmd in layer_cmds
+        ]
+        prompt = prompt_builder._build_prompt_deduplication(current_layer, prior_layers)
         resp = self.get_response(prompt)
         try:
             return json.loads(self._sanitize_llm_output(resp))
