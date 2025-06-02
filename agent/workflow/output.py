@@ -2,7 +2,9 @@
 Output and reporting utilities for Hawx Recon Agent.
 
 Handles command execution, output logging, summary generation, SearchSploit integration,
-and PDF export of executive summaries.
+and PDF expo            # For layer 0 (initial scan), use 5x timeout
+            if layer == 0:
+                timeout = timeout * 5of executive summaries.
 """
 
 import os
@@ -55,7 +57,7 @@ def load_filter_patterns():
     if _filter_patterns is not None:
         return _filter_patterns
     filter_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "filter.yaml"
+        os.path.dirname(os.path.dirname(__file__)), '../configs', "filter.yaml"
     )
     if not os.path.exists(filter_path):
         _filter_patterns = {}
@@ -157,8 +159,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             except ValueError:
                 timeout = 180
 
-            # For layer -1 (initial scan), use 5x timeout
-            if layer == -1:
+            # For layer 1 (initial scan), use 5x timeout
+            if layer == 1:
                 timeout = timeout * 5
 
             from select import select

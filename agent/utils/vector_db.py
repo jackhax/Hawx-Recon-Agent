@@ -11,7 +11,7 @@ import numpy as np
 try:
     from sentence_transformers import SentenceTransformer
 
-    MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+    MODEL = SentenceTransformer('/models/all-MiniLM-L6-v2')
 except ImportError:
     MODEL = None
 

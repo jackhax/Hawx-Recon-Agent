@@ -79,17 +79,29 @@ COPY custom_install.sh /tmp/custom_install.sh
 RUN bash /tmp/custom_install.sh
 
 # Copy configuration files and agent code
-COPY configs/filter.yaml /opt/agent/filter.yaml
-COPY configs/config.yaml /opt/agent/config.yaml
-COPY configs/tools.yaml /opt/agent/tools.yaml
+# COPY configs/filter.yaml /opt/agent/filter.yaml
+# COPY configs/config.yaml /opt/agent/config.yaml
+# COPY configs/tools.yaml /opt/agent/tools.yaml
+COPY configs/ /opt/agent/configs/
 COPY agent/* /opt/agent/
 COPY agent/llm /opt/agent/llm/
 COPY agent/utils /opt/agent/utils/
 COPY agent/workflow /opt/agent/workflow/
 COPY tests/ /opt/agent/tests/
 
-RUN export PYTHONPATH=/opt
-RUN python3 /opt/agent/utils/vector_db.py
+# Install additional Python packages for LLM and embedding models
+RUN pip install --no-cache-dir --break-system-packages sentence-transformers huggingface_hub
+RUN mkdir /models
+# Pin the Hugging Face model revision for determinism
+ENV HF_HOME=/root/.cache/huggingface
+RUN python3 -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download(\
+    repo_id='sentence-transformers/all-MiniLM-L6-v2', \
+    revision='7dbbc90392e2f80f3d3c277d6e90027e55de9125', \
+    local_dir='/models/all-MiniLM-L6-v2', \
+    local_dir_use_symlinks=False)"
+
 
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh

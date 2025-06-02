@@ -1,0 +1,80 @@
+# Layer 0 Initial Scan Configuration
+# Dynamic Variables:
+# {target}     - Raw target input (IP, hostname, or URL)
+# {domain}     - Extracted domain from target (e.g., example.com from https://www.example.com)
+# {root_domain} - Root domain (e.g., example.com from sub.example.com)
+# {subdomain}  - Subdomain part only (e.g., www from www.example.com)
+# {ip}         - IP address if target is an IP, or resolved IP if hostname
+# {port_80}    - Include command only if port 80 is open
+# {port_443}   - Include command only if port 443 is open
+# {tld}        - Top level domain (e.g., com from example.com)
+# {no_scheme}  - URL without scheme (e.g., www.example.com from https://www.example.com)
+
+# Target transformation patterns
+transformations:
+  domain:
+    pattern: "^(?:https?://)?(?:www\\.)?([^/]+)"
+    group: 1
+  root_domain:
+    pattern: "(?:[^.]+\\.)*([^.]+\\.[^.]+)$"
+    group: 1
+  subdomain:
+    pattern: "^(?:https?://)?([^.]+)\\."
+    group: 1
+  tld:
+    pattern: "\\.([^.]+)$"
+    group: 1
+  no_scheme:
+    pattern: "^(?:https?://)?(.*)"
+    group: 1
+
+host_mode:
+  commands:
+    - name: "nmap_full_scan"
+      description: "Full port scan with service version detection and default scripts"
+      command: "nmap -sC -sV -p- {target}"
+      timeout: 7200  # 2 hours
+      required: true # This scan must complete for the workflow to continue
+      conditions:
+        - type: "always"  # Always run this command
+
+website_mode:
+  commands:
+    - name: "whatweb_scan"
+      description: "Web technology and CMS detection"
+      command: "whatweb {target}"
+      timeout: 300  # 5 minutes
+      required: true
+      conditions:
+        - type: "always"
+
+    - name: "subfinder_root_domain"
+      description: "Subdomain enumeration on root domain"
+      command: "subfinder -d {root_domain}"
+      timeout: 600  # 10 minutes
+      required: false
+      conditions:
+        - type: "always"  # Always run to discover subdomains
+
+# Condition types supported:
+# - "always": Always run the command
+# - "has_subdomain": Run only if target has a subdomain
+# - "is_ip": Run only if target is an IP address
+# - "port_open": Run only if specified port is open
+# - "custom_regex": Run only if target matches custom regex pattern
+#
+# Example custom_regex usage:
+# conditions:
+#   - type: "custom_regex"
+#     pattern: "^https?://[^/]+\\.edu\\." # Only run on .edu domains
+#   - type: "custom_regex"
+#     pattern: "^192\\.168\\." # Only run on 192.168.* IP addresses
+#   - type: "custom_regex"
+#     pattern: "^(?!www\\.).*\\.com$" # Run on .com domains except www.
+
+# Global configuration
+global:
+  max_retries: 2  # Maximum number of retries for failed commands
+  parallel: false # Whether to run commands in parallel (future feature)
+  dns_resolver: "8.8.8.8"  # Default DNS resolver for lookups
+  timeout_multiplier: 1.5  # Multiplier for timeouts on retry

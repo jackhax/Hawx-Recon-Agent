@@ -16,13 +16,15 @@ class Records:
 
     def __init__(self):
         """Initialize records for commands, services, and available tools."""
-        # List of command lists for each workflow layer
-        self.commands = [[], [], [], []]
+        # List of command lists for layers 0-5 (6 total layers)
+        # Layer 0: Initial scan
+        # Layers 1-5: AI recommended layers based on user specified steps
+        self.commands = [[] for _ in range(6)]
         # List of discovered services (e.g., 'apache 2.4.41')
         self.services = []
         # Path to the YAML file containing tool definitions
         self.tools_yaml_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "tools.yaml"
+            os.path.dirname(os.path.dirname(__file__)), 'configs', "tools.yaml"
         )
         # List of all available tools (apt, pip, custom)
         self.available_tools = self.get_tools()
