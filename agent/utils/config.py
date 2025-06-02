@@ -22,10 +22,8 @@ def load_config(config_path=None):
     # Load structured config from YAML file
     # Try default locations
     if config_path is None:
-        if os.path.exists("configs/config.yaml"):
-            config_path = "configs/config.yaml"
-        elif os.path.exists("/opt/agent/config.yaml"):
-            config_path = "/opt/agent/config.yaml"
+        if os.path.exists("/opt/agent/configs/config.yaml"):
+            config_path = "/opt/agent/configs/config.yaml"
         else:
             raise FileNotFoundError("config.yaml not found in known locations")
 
