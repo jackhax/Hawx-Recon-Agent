@@ -24,7 +24,7 @@
 
 ```text
 [Host]
-└── hawx.sh
+└── hawx.py
     ├── Parses flags (IP, --ovpn, --steps, --hosts, etc.)
     ├── Launches Docker container
     │   ├── Mounts current directory to /mnt
@@ -149,18 +149,18 @@ ollama:
 ## Usage
 
 ```bash
-./hawx.sh [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive] <target>
+python hawx.py [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive] <target>
 ```
 
 - `<target>` can be an IP address, domain, or website URL (must include http:// or https:// for websites).
 - The script will automatically detect if the target is a host (IP/domain) or a website.
 - Example:
   ```bash
-  ./hawx.sh 10.10.11.58
-  ./hawx.sh dog.htb
-  ./hawx.sh https://example.com
-  ./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
-  ./hawx.sh --timeout 300 --test 10.10.11.58
+  python hawx.py 10.10.11.58
+  python hawx.py dog.htb
+  python hawx.py https://example.com
+  python hawx.py --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
+  python hawx.py --timeout 300 --test 10.10.11.58
   ```
 
 > You can specify a hosts file like:
@@ -208,11 +208,11 @@ ollama:
 - The positional argument `<target>` is required and can be an IP address, domain, or website URL (must include http:// or https:// for websites).
 - Example usage:
   ```bash
-  ./hawx.sh 10.10.11.58
-  ./hawx.sh dog.htb
-  ./hawx.sh https://example.com
-  ./hawx.sh --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
-  ./hawx.sh --timeout 300 --test 10.10.11.58
+  python hawx.py 10.10.11.58
+  python hawx.py dog.htb
+  python hawx.py https://example.com
+  python hawx.py --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
+  python hawx.py --timeout 300 --test 10.10.11.58
   ```
 
 ---

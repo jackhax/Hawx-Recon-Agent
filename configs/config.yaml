@@ -7,5 +7,4 @@ llm:
 
 # Notes:
 # - To switch models or providers, edit the values above
-# - You can add future providers (e.g., openai, anthropic) here under `llm`
 # - Providers currently supported: groq, ollama, openai, openrouter

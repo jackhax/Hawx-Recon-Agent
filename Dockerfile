@@ -88,6 +88,9 @@ COPY agent/utils /opt/agent/utils/
 COPY agent/workflow /opt/agent/workflow/
 COPY tests/ /opt/agent/tests/
 
+RUN export PYTHONPATH=/opt
+RUN python3 /opt/agent/utils/vector_db.py
+
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
