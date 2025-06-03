@@ -14,17 +14,15 @@ An intelligent, autonomous reconnaissance system powered by Large Language Model
    # Create .env file with your API key
    echo "LLM_API_KEY=your_llm_api_key_here" > .env
 
-   # Create config.yaml
-   mkdir -p configs
-   cat > configs/config.yaml << EOF
-   llm:
-     provider: groq           # or openai, ollama
-     model: qwen-2.5-coder-32b
-     context_length: 8192
-
-   ollama:
-     host: http://host.docker.internal:11434
-   EOF
+   # Update configs/config.yaml with your preferred settings
+   # Example configuration:
+   #   llm:
+   #     provider: groq           # or openai, ollama
+   #     model: qwen-2.5-coder-32b
+   #     context_length: 8192
+   #
+   #   ollama:
+   #     host: http://host.docker.internal:11434
    ```
 
 3. Run the agent:
