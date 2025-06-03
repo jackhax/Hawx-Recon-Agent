@@ -154,13 +154,17 @@ python hawx.py [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive]
 
 - `<target>` can be an IP address, domain, or website URL (must include http:// or https:// for websites).
 - The script will automatically detect if the target is a host (IP/domain) or a website.
-- Example:
+- Examples:
   ```bash
-  python hawx.py 10.10.11.58
-  python hawx.py dog.htb
-  python hawx.py https://example.com
-  python hawx.py --steps 2 --ovpn vpn.ovpn --hosts hosts.txt --interactive https://target.com
-  python hawx.py --timeout 300 --test 10.10.11.58
+  # Basic usage
+  python hawx.py 10.10.11.58                    # Host mode
+  python hawx.py dog.htb                        # Host mode with domain
+  python hawx.py https://example.com            # Website mode
+  
+  # Advanced usage with configurations
+  python hawx.py --steps 3 --config custom_layer0.yaml 10.10.11.58     # Custom initial scan
+  python hawx.py --interactive --timeout 1.5 https://target.edu        # Interactive with custom timeout
+  python hawx.py --steps 4 --ovpn vpn.ovpn --hosts hosts.txt target.com  # Full recon through VPN
   ```
 
 > You can specify a hosts file like:
@@ -196,10 +200,12 @@ python hawx.py [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive]
 
 | Flag            | Description                                                                 |
 |-----------------|-----------------------------------------------------------------------------|
-| `--steps`       | Number of recon layers (default: 1, max: 3)                                 |
+| `--steps`       | Number of recon layers (default: 1, max: 5)                                 |
 | `--ovpn`        | OpenVPN config file                                                         |
 | `--hosts`       | File to append to `/etc/hosts` inside container                             |
-| `--force-build` | Rebuild Docker image before execution                                       |
+| `--interactive` | Enable interactive mode to review/modify commands before execution           |
+| `--timeout`     | Global timeout multiplier for all commands                                  |
+| `--config`      | Path to custom layer0.yaml config file                                      |
 | `--interactive` | Ask user's confirmation before executing recommended commands (interactive)  |
 | `--test`        | Run in test mode (mounts tests/ into container)                             |
 | `--timeout`     | Timeout for each command in seconds (default: 180)                          |
@@ -229,3 +235,69 @@ python hawx.py [--steps N] [--ovpn file.ovpn] [--hosts file.txt] [--interactive]
 ## License
 
 MIT License – use freely, responsibly, and at your own risk.
+
+---
+
+## Layer 0 Configuration
+
+The initial scan phase (layer 0) is now fully configurable through `configs/layer0.yaml`. This allows you to customize the initial reconnaissance commands for both host and website targets.
+
+### Dynamic Variables
+Variable substitution in commands:
+```yaml
+{target}      # Raw target input (IP, hostname, or URL)
+{domain}      # Extracted domain (example.com from https://www.example.com)
+{root_domain}  # Root domain (example.com from sub.example.com)
+{subdomain}   # Subdomain part only (www from www.example.com)
+{ip}          # Resolved IP address
+{no_scheme}   # URL without http(s)://
+{tld}         # Top level domain (com from example.com)
+```
+
+### Configuration Example
+```yaml
+host_mode:
+  commands:
+    - name: "nmap_full_scan"
+      description: "Full port scan with service detection"
+      command: "nmap -sC -sV -p- {target}"
+      timeout: 7200  # 2 hours
+      required: true
+
+website_mode:
+  commands:
+    - name: "whatweb_scan"
+      description: "Web technology detection"
+      command: "whatweb {target}"
+      timeout: 300
+      required: true
+    
+    - name: "subfinder_scan"
+      description: "Subdomain enumeration"
+      command: "subfinder -d {root_domain}"
+      timeout: 600
+      required: false
+```
+
+### Conditional Execution
+Commands can be configured to run only when certain conditions are met:
+
+```yaml
+conditions:
+  - type: "always"            # Always run this command
+  - type: "has_subdomain"     # Run if target has a subdomain
+  - type: "is_ip"            # Run if target is an IP address
+  - type: "port_open"        # Run if specific port is open
+    port: 443
+  - type: "custom_regex"     # Run if target matches pattern
+    pattern: "^https?://[^/]+\\.edu\\."  # .edu domains
+```
+
+### Global Settings
+```yaml
+global:
+  max_retries: 2             # Maximum retries for failed commands
+  parallel: false            # Run commands in parallel (future)
+  dns_resolver: "8.8.8.8"    # Default DNS resolver
+  timeout_multiplier: 1.5    # Timeout multiplier for retries
+```

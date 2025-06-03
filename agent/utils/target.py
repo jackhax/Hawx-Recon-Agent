@@ -15,7 +15,7 @@ def resolve_ip(target: str) -> str:
     hostname = re.sub(r'^https?://', '', target)
     # Remove path and query components
     hostname = hostname.split('/')[0]
-    
+
     try:
         if re.match(r'^(\d{1,3}\.){3}\d{1,3}$', hostname):
             return hostname
@@ -48,28 +48,28 @@ def initialize_target_variables(target: str, layer0_config: Dict) -> Dict[str, s
 def evaluate_condition(condition: Dict, target_vars: Dict[str, str]) -> bool:
     """Evaluate if a command should run based on its conditions."""
     cond_type = condition.get('type')
-    
+
     if cond_type == 'always':
         return True
-        
+
     elif cond_type == 'has_subdomain':
         return bool(target_vars.get('subdomain'))
-        
+
     elif cond_type == 'is_ip':
         target = target_vars.get('target', '')
         return bool(re.match(r'^(\d{1,3}\.){3}\d{1,3}$', target))
-        
+
     elif cond_type == 'port_open':
         port = condition.get('port')
         open_ports = target_vars.get('open_ports', set())
         return port in open_ports
-        
+
     elif cond_type == 'custom_regex':
         pattern = condition.get('pattern')
         if pattern:
             target = target_vars.get('target', '')
             return bool(re.search(pattern, target))
-            
+
     return False
 
 

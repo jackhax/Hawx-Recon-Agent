@@ -102,20 +102,14 @@ def load_llm_api_key():
     sys.exit(1)
 
 
-def build_image_if_needed(image_name, dockerfile=None, force=False):
-    result = subprocess.run(
-        ["docker", "images", "-q", image_name], capture_output=True, text=True
-    )
-    if force or not result.stdout.strip():
-        print(f"[*] Building Docker image '{image_name}'...")
-        cmd = ["docker", "build", "--platform=linux/amd64", "-t", image_name]
-        if dockerfile:
-            cmd += ["-f", dockerfile]
-        cmd.append(".")
-        subprocess.check_call(cmd)
-    else:
-        print(
-            f"[*] Docker image '{image_name}' already exists. Skipping build.")
+def build_image(image_name, dockerfile=None):
+    """Always build the Docker image."""
+    print(f"[*] Building Docker image '{image_name}'...")
+    cmd = ["docker", "build", "--platform=linux/amd64", "-t", image_name]
+    if dockerfile:
+        cmd += ["-f", dockerfile]
+    cmd.append(".")
+    subprocess.check_call(cmd)
 
 
 def resolve_ip_from_hosts_file(ip, hosts_file):
@@ -146,11 +140,6 @@ Examples:
     )
     parser.add_argument(
         "target", metavar="TARGET", help="Target IP, domain, or website URL"
-    )
-    parser.add_argument(
-        "--force-build",
-        action="store_true",
-        help="Rebuild the Docker image before execution.",
     )
     parser.add_argument(
         "--steps",
@@ -248,7 +237,7 @@ Examples:
     generate_dependency_files()
 
     # --- Build main image if needed ---
-    build_image_if_needed(IMAGE_NAME, force=args.force_build)
+    build_image(IMAGE_NAME)
 
     # --- Compose Docker run command ---
     docker_cmd = [
