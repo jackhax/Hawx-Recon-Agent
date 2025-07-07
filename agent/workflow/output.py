@@ -56,7 +56,7 @@ def load_filter_patterns():
     if _filter_patterns is not None:
         return _filter_patterns
     filter_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), '../configs', "filter.yaml"
+        os.path.dirname(os.path.dirname(__file__)), "../configs", "filter.yaml"
     )
     if not os.path.exists(filter_path):
         _filter_patterns = {}
@@ -96,8 +96,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
 
     timestamp = datetime.utcnow().isoformat()
-    output_file = os.path.join(
-        base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
+    output_file = os.path.join(base_dir, "logs", f"{tool}_{uuid.uuid4().hex[:8]}.txt")
     metadata_file = os.path.join(base_dir, "metadata.json")
 
     # Collect all previously executed commands for DRY logic
@@ -122,19 +121,20 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             )
 
             # Check if command contains shell operators and execute accordingly
-            use_shell = any(op in ' '.join(command_parts)
-                            for op in ['&&', '||', '|', ';', '>', '<'])
+            use_shell = any(
+                op in " ".join(command_parts) for op in ["&&", "||", "|", ";", ">", "<"]
+            )
 
             if use_shell:
                 # If shell operators are present, join command parts and run with shell=True
-                cmd = ' '.join(command_parts)
+                cmd = " ".join(command_parts)
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     stdin=subprocess.DEVNULL,
                     text=True,
-                    shell=True
+                    shell=True,
                 )
             else:
                 # Otherwise run as array of args without shell
@@ -143,7 +143,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     stdin=subprocess.DEVNULL,
-                    text=True
+                    text=True,
                 )
 
             last_line = ""
@@ -176,10 +176,8 @@ def execute_command(command_parts, llm_client, base_dir, layer):
                         last_line = ascii_line.strip()
                         last_update = time.time()
                         # Clear the line before printing new output
-                        print(f"\r{' ' * (term_width-1)}\r",
-                              end="", flush=True)
-                        print(
-                            f"    {last_line[:term_width - 4]}", end="", flush=True)
+                        print(f"\r{' ' * (term_width-1)}\r", end="", flush=True)
+                        print(f"    {last_line[:term_width - 4]}", end="", flush=True)
                 else:
                     # No output in this iteration, check inactivity timeout
                     if timeout and time_since_update > timeout:
