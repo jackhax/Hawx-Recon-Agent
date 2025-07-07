@@ -53,10 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip \
     --fix-missing \
     && rm -rf /var/lib/apt/lists/*
-
-# Install necessary heavy Python packages
-RUN pip3 install --break-system-packages --no-cache-dir numpy sentence-transformers
-
+    
 # Set working directory
 WORKDIR /opt/agent
 
@@ -88,20 +85,6 @@ COPY agent/llm /opt/agent/llm/
 COPY agent/utils /opt/agent/utils/
 COPY agent/workflow /opt/agent/workflow/
 COPY tests/ /opt/agent/tests/
-
-# Install additional Python packages for LLM and embedding models
-RUN pip install --no-cache-dir --break-system-packages sentence-transformers huggingface_hub
-RUN mkdir /models
-# Pin the Hugging Face model revision for determinism
-ENV HF_HOME=/root/.cache/huggingface
-RUN python3 -c "\
-from huggingface_hub import snapshot_download; \
-snapshot_download(\
-    repo_id='sentence-transformers/all-MiniLM-L6-v2', \
-    revision='7dbbc90392e2f80f3d3c277d6e90027e55de9125', \
-    local_dir='/models/all-MiniLM-L6-v2', \
-    local_dir_use_symlinks=False)"
-
 
 # Copy entrypoint and make executable
 COPY entrypoint.sh /opt/entrypoint.sh

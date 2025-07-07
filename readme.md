@@ -9,6 +9,8 @@ An intelligent, autonomous reconnaissance system powered by Large Language Model
    sudo apt install docker.io
    ```
 
+   > **Note:** On the first run, building the Docker image can take anywhere from 10 to 30 minutes depending on your internet speed, as all dependencies and tools are downloaded and installed.
+
 2. Set up your environment:
    ```bash
    # Create .env file with your API key
@@ -67,6 +69,7 @@ python hawx.py [options] <target>
 | `--timeout N`  | Global timeout multiplier                            |
 | `--config FILE`| Custom layer0.yaml config path                       |
 | `--test`       | Run in test mode                                     |
+| `--force-build`| Force rebuild of the Docker image before running      |
 
 ### Examples
 
@@ -80,7 +83,10 @@ python hawx.py https://example.com            # Web target
 python hawx.py --steps 3 --config custom_layer0.yaml 10.10.11.58
 python hawx.py --interactive --timeout 1.5 https://target.edu
 python hawx.py --steps 4 --ovpn vpn.ovpn --hosts hosts.txt target.com
+python hawx.py --force-build 10.10.11.58      # Force Docker image rebuild
 ```
+
+> **Note:** The Docker image is automatically rebuilt if `.env` or any file in `configs/` changes, even if you do not specify `--force-build`.
 
 ## 🔄 Workflow
 

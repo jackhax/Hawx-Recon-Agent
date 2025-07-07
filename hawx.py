@@ -6,6 +6,7 @@ import subprocess
 import sys
 import yaml
 import filecmp
+import hashlib
 
 
 def generate_dependency_files():
@@ -67,6 +68,23 @@ def generate_dependency_files():
             print(f"[*] No changes needed for {target_file}")
 
 
+def compute_config_hash():
+    """Compute a hash of .env and all files in configs/ directory."""
+    hash_md5 = hashlib.md5()
+    # Hash .env
+    if os.path.exists('.env'):
+        with open('.env', 'rb') as f:
+            hash_md5.update(f.read())
+    # Hash all files in configs/
+    if os.path.isdir('configs'):
+        for root, _, files in os.walk('configs'):
+            for fname in sorted(files):
+                fpath = os.path.join(root, fname)
+                with open(fpath, 'rb') as f:
+                    hash_md5.update(f.read())
+    return hash_md5.hexdigest()
+
+
 # --- Constants ---
 IMAGE_NAME = "hawx-agent"
 BASE_IMAGE_NAME = "hawx-recon-base:latest"
@@ -113,7 +131,7 @@ def build_image(image_name, dockerfile=None):
 
 
 def resolve_ip_from_hosts_file(ip, hosts_file):
-    """Attempt to resolve an IP address to a hostname using a hosts file."""
+    """Attempt to resolve an IP address to ahostname using a hosts file."""
     if not os.path.exists(hosts_file):
         return None
 
@@ -168,7 +186,27 @@ Examples:
         default=180,
         help="Timeout for each command in seconds (default: 180).",
     )
+    parser.add_argument(
+        "--force-build",
+        action="store_true",
+        help="Force rebuild of the Docker image before running."
+    )
     args = parser.parse_args()
+
+    # --- Config change detection ---
+    config_hash = compute_config_hash()
+    hash_file = '.last_build_hash'
+    config_changed = True
+    if os.path.exists(hash_file):
+        with open(hash_file, 'r') as f:
+            last_hash = f.read().strip()
+        if last_hash == config_hash:
+            config_changed = False
+    if config_changed:
+        print("[*] Detected change in .env or configs/. Forcing Docker image rebuild.")
+        args.force_build = True
+        with open(hash_file, 'w') as f:
+            f.write(config_hash)
 
     # --- Target validation ---
     target = args.target
@@ -237,7 +275,24 @@ Examples:
     generate_dependency_files()
 
     # --- Build main image if needed ---
-    build_image(IMAGE_NAME)
+    def docker_image_exists(image_name):
+        try:
+            subprocess.check_output(
+                ["docker", "image", "inspect", image_name], stderr=subprocess.DEVNULL)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    if args.force_build:
+        build_image(IMAGE_NAME)
+    else:
+        if not docker_image_exists(IMAGE_NAME):
+            print(
+                f"[*] Docker image '{IMAGE_NAME}' not found locally. Building now...")
+            build_image(IMAGE_NAME)
+        else:
+            print(
+                "[*] Skipping Docker image build (use --force-build to force rebuild)")
 
     # --- Compose Docker run command ---
     docker_cmd = [

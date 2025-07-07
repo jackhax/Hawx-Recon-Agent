@@ -17,7 +17,6 @@ import shutil
 import yaml
 import re
 import shlex
-from ..utils.vector_db import VectorDB
 
 
 def print_banner():
@@ -95,10 +94,6 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     tool = command_parts[0]
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(os.path.join(base_dir, "logs"), exist_ok=True)
-
-    # === Vector DB setup ===
-    vectordb_path = os.path.join(base_dir, "vector_db.json")
-    vectordb = VectorDB(vectordb_path)
 
     timestamp = datetime.utcnow().isoformat()
     output_file = os.path.join(
@@ -233,14 +228,7 @@ def execute_command(command_parts, llm_client, base_dir, layer):
     filtered_log = filter_log_for_llm(tool, raw_log)
 
     # === Retrieve similar commands/summaries for LLM context ===
-    similar = vectordb.search_similar(" ".join(command_parts), top_k=3)
-    similar_context = (
-        "\n\n".join(
-            [f"Command: {e['command']}\nSummary: {e['summary']}" for e in similar]
-        )
-        if similar
-        else None
-    )
+    similar_context = None
 
     resp = llm_client.post_step(
         command_parts,
@@ -326,9 +314,6 @@ def execute_command(command_parts, llm_client, base_dir, layer):
             json.dump(existing_data, jf, indent=2)
     except Exception as exc:
         print(f"[!] JSON summary error: {exc}")
-
-    # === Store in vector DB after summarization ===
-    vectordb.add(" ".join(command_parts), summary_text)
 
     return resp
 
