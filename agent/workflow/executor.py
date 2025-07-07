@@ -16,8 +16,9 @@ from ..utils.target import (
     initialize_target_variables,
     evaluate_condition,
     substitute_variables,
-    update_open_ports
+    update_open_ports,
 )
+import difflib
 
 
 class ReconExecutor:
@@ -38,9 +39,12 @@ class ReconExecutor:
         # Target mode ('host' or 'website')
         self.target_mode = target_mode
         if self.target_mode == "website":
-            if not (str(target).startswith("http://") or str(target).startswith("https://")):
+            if not (
+                str(target).startswith("http://") or str(target).startswith("https://")
+            ):
                 print(
-                    "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)")
+                    "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)"
+                )
                 sys.exit(1)
         # Directory for storing recon data for this target
         self.base_dir = os.path.join(
@@ -53,47 +57,50 @@ class ReconExecutor:
         # Load layer0 configuration
         self.layer0_config = self._load_layer0_config()
         # Initialize target variables
-        self.target_vars = initialize_target_variables(
-            target, self.layer0_config)
+        self.target_vars = initialize_target_variables(target, self.layer0_config)
 
     def _get_domain(self, url: str) -> str:
         """Extract the domain from a URL."""
         import re
+
         m = re.match(r"https?://([^/]+)", url)
         return m.group(1) if m else url
 
     def _load_layer0_config(self) -> Dict:
         """Load and validate the layer0.yaml configuration."""
-        config_path = os.path.join(os.path.dirname(
-            __file__), '../configs', 'layer0.yaml')
+        config_path = os.path.join(
+            os.path.dirname(__file__), "../configs", "layer0.yaml"
+        )
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
 
             # Basic validation
-            for mode in ['host_mode', 'website_mode']:
+            for mode in ["host_mode", "website_mode"]:
                 if mode not in config:
                     print(f"[!] Warning: {mode} not found in layer0.yaml")
-                    config[mode] = {'commands': []}
-                elif not isinstance(config[mode].get('commands'), list):
+                    config[mode] = {"commands": []}
+                elif not isinstance(config[mode].get("commands"), list):
                     print(f"[!] Warning: Invalid commands format in {mode}")
-                    config[mode]['commands'] = []
+                    config[mode]["commands"] = []
 
             return config
         except Exception as e:
             print(f"[!] Error loading layer0.yaml: {e}")
             # Return default configuration
             return {
-                'host_mode': {
-                    'commands': [{'command': 'nmap -sC -sV -p- {target}', 'required': True}]
-                },
-                'website_mode': {
-                    'commands': [
-                        {'command': 'whatweb {target}', 'required': True},
-                        {'command': 'subfinder -d {domain}', 'required': False}
+                "host_mode": {
+                    "commands": [
+                        {"command": "nmap -sC -sV -p- {target}", "required": True}
                     ]
                 },
-                'global': {'max_retries': 2, 'parallel': False}
+                "website_mode": {
+                    "commands": [
+                        {"command": "whatweb {target}", "required": True},
+                        {"command": "subfinder -d {domain}", "required": False},
+                    ]
+                },
+                "global": {"max_retries": 2, "parallel": False},
             }
 
     def _get_layer0_commands(self) -> List[str]:
@@ -101,14 +108,14 @@ class ReconExecutor:
         mode_key = f"{self.target_mode}_mode"
         commands = []
 
-        for cmd_config in self.layer0_config.get(mode_key, {}).get('commands', []):
+        for cmd_config in self.layer0_config.get(mode_key, {}).get("commands", []):
             if not isinstance(cmd_config, dict):
                 continue
 
             # Check all conditions are met
-            conditions = cmd_config.get('conditions', [{'type': 'always'}])
+            conditions = cmd_config.get("conditions", [{"type": "always"}])
             if all(evaluate_condition(cond, self.target_vars) for cond in conditions):
-                cmd = cmd_config.get('command', '')
+                cmd = cmd_config.get("command", "")
                 if cmd:
                     # Substitute all variables
                     cmd = substitute_variables(cmd, self.target_vars)
@@ -120,7 +127,8 @@ class ReconExecutor:
         """Interactive menu for selecting which web recon tools to run."""
         # This menu is only shown if --interactive flag is used
         print(
-            "\n[?] Select which web recon tools to run (space to toggle, enter to confirm):")
+            "\n[?] Select which web recon tools to run (space to toggle, enter to confirm):"
+        )
         selected = [True] * len(tool_cmds)
         tool_names = [cmd.split()[0] for cmd in tool_cmds]
         while True:
@@ -128,7 +136,8 @@ class ReconExecutor:
                 mark = "[x]" if sel else "[ ]"
                 print(f"  {i+1}. {mark} {tool} : {tool_cmds[i]}")
             print(
-                "  (Type numbers separated by space to toggle, or press enter to continue)")
+                "  (Type numbers separated by space to toggle, or press enter to continue)"
+            )
             inp = input("  > ").strip()
             if not inp:
                 break
@@ -140,12 +149,28 @@ class ReconExecutor:
             print()
         return [cmd for cmd, sel in zip(tool_cmds, selected) if sel]
 
+    def _is_fuzzy_duplicate(self, cmd, all_prev_cmds, threshold=0.85):
+        """Return True if cmd is similar to any in all_prev_cmds above threshold."""
+        for prev in all_prev_cmds:
+            ratio = difflib.SequenceMatcher(None, cmd, prev).ratio()
+            if ratio >= threshold:
+                return True
+        return False
+
     def add_commands(self, commands, layer):
-        """Store deduplicated commands for the given workflow layer."""
-        self.records.commands[layer] = commands
-        deduped = self.llm_client.deduplicate_commands(
-            self.records.commands, layer)
-        final = deduped.get("deduplicated_commands", commands)
+        """Store deduplicated and fuzzy-matched commands for the given workflow layer."""
+        # Gather all previously executed commands from all layers up to this one
+        all_prev_cmds = []
+        for i in range(layer):
+            if i < len(self.records.commands):
+                all_prev_cmds.extend(self.records.commands[i])
+        # Filter out fuzzy duplicates
+        unique_cmds = [
+            cmd for cmd in commands if not self._is_fuzzy_duplicate(cmd, all_prev_cmds)
+        ]
+        self.records.commands[layer] = unique_cmds
+        deduped = self.llm_client.deduplicate_commands(self.records.commands, layer)
+        final = deduped.get("deduplicated_commands", unique_cmds)
         self.records.commands[layer] = final
 
     def add_services(self, services):
@@ -172,19 +197,19 @@ class ReconExecutor:
         # Update target variables based on scan results
         if self.target_mode == "host":
             nmap_log_dir = os.path.join(self.base_dir, "logs")
-            nmap_logs = [f for f in os.listdir(
-                nmap_log_dir) if f.startswith("nmap_")]
+            nmap_logs = [f for f in os.listdir(nmap_log_dir) if f.startswith("nmap_")]
             for log in nmap_logs:
                 with open(os.path.join(nmap_log_dir, log), "r", encoding="utf-8") as f:
                     update_open_ports(self.target_vars, f.read())
 
             # Check web ports and adjust layer 1 commands accordingly
-            open_ports = self.target_vars.get('open_ports', set())
+            open_ports = self.target_vars.get("open_ports", set())
             if 80 in open_ports or 443 in open_ports:
                 proto = None
                 if 443 in open_ports:
                     # Try HTTPS first
                     import subprocess
+
                     try:
                         resp = subprocess.run(
                             ["curl", "-I", f"https://{self.target}"],
