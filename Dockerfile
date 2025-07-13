@@ -1,59 +1,10 @@
-# Dockerfile.base
-FROM kalilinux/kali-rolling
+# Dockerfile
+FROM jackhax/recon-agent-base:latest
+#base can be built locally with `docker build -f Dockerfile.base -t jackhax/recon-agent-base:1.0 .`
 
-LABEL maintainer="jackhax <adnanjackady@gmail.com>"
-LABEL version="1.0"
-LABEL description="Recon Agent base image with all tools pre-installed"
-
-ENV DEBIAN_FRONTEND=noninteractive
-ENV GO_VERSION=1.24.0
-ENV PATH="/usr/local/go/bin:$PATH"
-
-# Use a reliable Kali mirror and force IPv4 for apt
-RUN sed -i 's|http://http.kali.org/kali|http://kali.download/kali|g' /etc/apt/sources.list && \
-    echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
-
-# Install core utilities (layered, max 5 per RUN)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl wget git unzip --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends iproute2 net-tools traceroute --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential pkg-config --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install recon and pentest tools (layered, max 5 per RUN, each with apt-get update)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends openvpn nmap gobuster nikto ffuf --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends dnsutils dnsrecon smtp-user-enum lftp ftp --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends hydra onesixtyone snmp snmpd snmpcheck --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends smbclient enum4linux rpcbind nbtscan seclists --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends exploitdb netcat-traditional --fix-missing && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install network libraries
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpcap-dev \
-    libpcap0.8 \
-    --fix-missing \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python and Go
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip \
-    --fix-missing \
-    && rm -rf /var/lib/apt/lists/*
-    
+LABEL maintainer="jackhax <mj3184@nyu.edu>"
+LABEL version="2.0"
+LABEL description="Recon Agent runtime image with final code and configs"
 # Set working directory
 WORKDIR /opt/agent
 
@@ -75,10 +26,6 @@ ENV PATH="/root/go/bin:${PATH}"
 COPY custom_install.sh /tmp/custom_install.sh
 RUN bash /tmp/custom_install.sh
 
-# Copy configuration files and agent code
-# COPY configs/filter.yaml /opt/agent/filter.yaml
-# COPY configs/config.yaml /opt/agent/config.yaml
-# COPY configs/tools.yaml /opt/agent/tools.yaml
 COPY configs/ /opt/agent/configs/
 COPY agent/* /opt/agent/
 COPY agent/llm /opt/agent/llm/

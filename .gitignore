@@ -16,6 +16,7 @@ requirements_runtime.txt
 apt_install.sh
 custom_install.sh
 .last_build_hash
+.vscode/
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,python,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,python,visualstudiocode

@@ -37,7 +37,7 @@ You are a cybersecurity assistant analyzing the result of the following recon co
 
 2. **Service Enumeration**
    - For each discovered service/port, enumerate in depth:
-     - **Web**: Directory/file brute-forcing (gobuster, feroxbuster), virtual host discovery (gobuster vhost mode), tech fingerprinting (whatweb, wappalyzer), robots.txt, .git, config files, admin panels, login pages, and custom endpoints.
+     - **Web**: Directory/file brute-forcing (gobuster, feroxbuster(--depth=1)), virtual host discovery (gobuster vhost mode), tech fingerprinting (whatweb, wappalyzer), robots.txt, .git, config files, admin panels, login pages, and custom endpoints.
      - **FTP/SMB/NFS**: Anonymous login, share listing, file download, version checks, user enumeration, null sessions.
      - **SSH/Telnet**: Banner grabbing, weak/default credentials, version checks.
      - **Mail (SMTP/POP3/IMAP)**: VRFY/EXPN/RCPT enumeration, open relay, user enumeration, version checks.
@@ -121,7 +121,7 @@ You are a cybersecurity assistant analyzing the result of the following recon co
 Respond with this **raw JSON object** only:
 
 {{
-        "summary": "<string>",
+  "summary": "<string>",
   "recommended_steps": ["<command1>", "<command2>", "..."],
   "services_found": ["apache 2.4.41", "phpmyadmin 5.1.0"]
 }}

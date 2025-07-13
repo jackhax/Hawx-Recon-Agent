@@ -62,7 +62,7 @@ python hawx.py [options] <target>
 
 | Flag            | Description                                          |
 |----------------|------------------------------------------------------|
-| `--steps N`    | Number of recon layers (default: 1, max: 5)          |
+| `--layer N`    | Number of layers of commands to execute (default: 3, max: 5) |
 | `--ovpn FILE`  | OpenVPN config file for remote targets               |
 | `--hosts FILE` | Custom hosts file for domain resolution              |
 | `--interactive`| Review commands before execution                      |
@@ -80,9 +80,9 @@ python hawx.py dog.htb                        # Domain target
 python hawx.py https://example.com            # Web target
 
 # Advanced usage
-python hawx.py --steps 3 --config custom_layer0.yaml 10.10.11.58
+python hawx.py --layer 4 example.com
 python hawx.py --interactive --timeout 1.5 https://target.edu
-python hawx.py --steps 4 --ovpn vpn.ovpn --hosts hosts.txt target.com
+python hawx.py --layer 4 --ovpn vpn.ovpn --hosts hosts.txt target.com
 python hawx.py --force-build 10.10.11.58      # Force Docker image rebuild
 ```
 

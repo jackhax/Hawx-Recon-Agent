@@ -35,7 +35,8 @@ def generate_dependency_files():
 
     # Write requirements_runtime.txt.tmp
     with open("requirements_runtime.txt.tmp", "w") as f:
-        f.write("\n".join(sorted(pip_requirements)) + "\n" if pip_requirements else "")
+        f.write("\n".join(sorted(pip_requirements)) +
+                "\n" if pip_requirements else "")
 
     # Write apt_install.sh.tmp
     with open("apt_install.sh.tmp", "w") as f:
@@ -164,32 +165,34 @@ Examples:
         "target", metavar="TARGET", help="Target IP, domain, or website URL"
     )
     parser.add_argument(
-        "--steps",
+        "-l", "--layer",
         type=int,
         default=3,
         choices=range(1, 6),
         help="Number of layers of commands to execute (default: 3, max: 5).",
     )
-    parser.add_argument("--ovpn", metavar="FILE", help="Optional OpenVPN config file.")
+    parser.add_argument("-o", "--ovpn", metavar="FILE",
+                        help="Optional OpenVPN config file.")
     parser.add_argument(
-        "--hosts",
+        "-H", "--hosts",
         metavar="FILE",
         help="Optional file whose contents are appended to /etc/hosts inside container.",
     )
     parser.add_argument(
-        "--interactive",
+        "-i", "--interactive",
         action="store_true",
         help="Run in interactive LLM-assisted mode.",
     )
-    parser.add_argument("--test", action="store_true", help="Run in test mode.")
+    parser.add_argument("-t", "--test", action="store_true",
+                        help="Run in test mode.")
     parser.add_argument(
-        "--timeout",
+        "-T", "--timeout",
         type=int,
         default=180,
         help="Timeout for each command in seconds (default: 180).",
     )
     parser.add_argument(
-        "--force-build",
+        "-f", "--force-build",
         action="store_true",
         help="Force rebuild of the Docker image before running.",
     )
@@ -269,14 +272,26 @@ Examples:
             sys.exit(1)
         abs_hosts = os.path.abspath(args.hosts)
         rel_hosts = os.path.relpath(abs_hosts, os.getcwd())
-        docker_net_opts += ["-v", f"{os.getcwd()}/{rel_hosts}:/mnt/custom_hosts"]
+        docker_net_opts += ["-v",
+                            f"{os.getcwd()}/{rel_hosts}:/mnt/custom_hosts"]
         docker_ovpn_env += ["-e", "CUSTOM_HOSTS_FILE=/mnt/custom_hosts"]
 
     # --- Generate dependency files ---
     generate_dependency_files()
 
-    # --- Build main image if needed ---
-    if args.force_build:
+    # --- Auto-build if image is missing ---
+    def docker_image_exists(image_name):
+        result = subprocess.run(
+            ["docker", "images", "-q", image_name],
+            capture_output=True,
+            text=True
+        )
+        return bool(result.stdout.strip())
+
+    if args.force_build or not docker_image_exists(IMAGE_NAME):
+        if not args.force_build:
+            print(
+                f"[*] Docker image '{IMAGE_NAME}' not found locally. Building it now...")
         build_image(IMAGE_NAME)
     else:
         print("[*] Skipping Docker image build (use --force-build to force rebuild)")
@@ -289,7 +304,7 @@ Examples:
         "-it",
         *docker_net_opts,
         "-e",
-        f"STEPS={args.steps}",
+        f"STEPS={args.layer}",
         "-e",
         f"LLM_API_KEY={llm_api_key}",
         "-e",

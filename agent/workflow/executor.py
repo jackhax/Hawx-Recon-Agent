@@ -40,7 +40,8 @@ class ReconExecutor:
         self.target_mode = target_mode
         if self.target_mode == "website":
             if not (
-                str(target).startswith("http://") or str(target).startswith("https://")
+                str(target).startswith(
+                    "http://") or str(target).startswith("https://")
             ):
                 print(
                     "[!] For website mode, the target must start with http:// or https:// (protocol is mandatory)"
@@ -57,7 +58,8 @@ class ReconExecutor:
         # Load layer0 configuration
         self.layer0_config = self._load_layer0_config()
         # Initialize target variables
-        self.target_vars = initialize_target_variables(target, self.layer0_config)
+        self.target_vars = initialize_target_variables(
+            target, self.layer0_config)
 
     def _get_domain(self, url: str) -> str:
         """Extract the domain from a URL."""
@@ -149,7 +151,7 @@ class ReconExecutor:
             print()
         return [cmd for cmd, sel in zip(tool_cmds, selected) if sel]
 
-    def _is_fuzzy_duplicate(self, cmd, all_prev_cmds, threshold=0.85):
+    def _is_fuzzy_duplicate(self, cmd, all_prev_cmds, threshold=0.75):
         """Return True if cmd is similar to any in all_prev_cmds above threshold."""
         for prev in all_prev_cmds:
             ratio = difflib.SequenceMatcher(None, cmd, prev).ratio()
@@ -169,7 +171,8 @@ class ReconExecutor:
             cmd for cmd in commands if not self._is_fuzzy_duplicate(cmd, all_prev_cmds)
         ]
         self.records.commands[layer] = unique_cmds
-        deduped = self.llm_client.deduplicate_commands(self.records.commands, layer)
+        deduped = self.llm_client.deduplicate_commands(
+            self.records.commands, layer)
         final = deduped.get("deduplicated_commands", unique_cmds)
         self.records.commands[layer] = final
 
@@ -193,11 +196,13 @@ class ReconExecutor:
             self.records,
             self.interactive,
         )
+        self.add_commands(layer0_cmds, 0)
 
         # Update target variables based on scan results
         if self.target_mode == "host":
             nmap_log_dir = os.path.join(self.base_dir, "logs")
-            nmap_logs = [f for f in os.listdir(nmap_log_dir) if f.startswith("nmap_")]
+            nmap_logs = [f for f in os.listdir(
+                nmap_log_dir) if f.startswith("nmap_")]
             for log in nmap_logs:
                 with open(os.path.join(nmap_log_dir, log), "r", encoding="utf-8") as f:
                     update_open_ports(self.target_vars, f.read())
